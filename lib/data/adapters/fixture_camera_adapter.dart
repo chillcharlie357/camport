@@ -24,11 +24,12 @@ final class FixtureCameraAdapter implements CameraAdapter {
     }),
     ...List.generate(14, (index) {
       final number = (index + 1).toString().padLeft(4, '0');
-      final name = 'DSC_$number.JPG';
+      final extension = index == 5 ? 'PNG' : 'JPG';
+      final name = 'DSC_$number.$extension';
       return CameraFile(
         id: 'jpeg-${index + 1}',
         name: name,
-        extension: 'JPG',
+        extension: extension,
         format: CameraFileFormat.fromFileName(name),
         byteLength: 5_200_000 + index * 31_000,
         thumbnailKey: 'placeholder:jpeg-${index + 1}',

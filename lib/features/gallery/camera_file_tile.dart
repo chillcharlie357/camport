@@ -1,179 +1,145 @@
-import 'dart:ui' show FontFeature;
-
 import 'package:flutter/material.dart';
 
 import '../../app/app_theme.dart';
-import '../../domain/models/camera_file.dart';
+import '../../domain/models/gallery_entry.dart';
 
 class CameraFileTile extends StatelessWidget {
   const CameraFileTile({
-    required this.file,
-    required this.selected,
+    required this.entry,
+    required this.selection,
+    required this.rating,
     required this.onTap,
+    required this.onToggleSelection,
     super.key,
   });
 
-  final CameraFile file;
-  final bool selected;
+  final GalleryEntry entry;
+  final bool? selection;
+  final int rating;
   final VoidCallback onTap;
-
-  String get _formatLabel => switch (file.format) {
-    CameraFileFormat.raw => 'RAW',
-    CameraFileFormat.jpeg => 'JPEG',
-    CameraFileFormat.mp4 => 'MP4',
-    CameraFileFormat.avchd => 'AVCHD',
-    CameraFileFormat.other => '其他',
-  };
+  final VoidCallback onToggleSelection;
 
   @override
   Widget build(BuildContext context) {
-    final format = file.format;
     final theme = Theme.of(context);
+    final file = entry.representative;
+    final selectionLabel = switch (selection) {
+      true => '取消选择',
+      false => '选择',
+      null => '部分已选，选择全部',
+    };
 
-    return Semantics(
-      button: true,
-      selected: selected,
-      label: '${file.name}，$_formatLabel，${_sizeLabel(file.byteLength)}',
-      hint: selected ? '双击取消选择' : '双击选择文件',
-      onTap: onTap,
-      child: ExcludeSemantics(
-        child: Material(
-          color: AppTheme.surface,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(14),
-            side: BorderSide(
-              color: selected ? AppTheme.accent : AppTheme.line,
-              width: selected ? 1.5 : 1,
-            ),
-          ),
-          clipBehavior: Clip.antiAlias,
-          child: InkWell(
-            onTap: onTap,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-                  child: _ThumbnailPlaceholder(
-                    format: format,
-                    selected: selected,
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 11, 12, 12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              file.name,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: theme.textTheme.labelLarge?.copyWith(
-                                color: AppTheme.text,
-                                fontFeatures: const [
-                                  FontFeature.tabularFigures(),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          _FormatBadge(label: _formatLabel),
-                        ],
-                      ),
-                      const SizedBox(height: 7),
-                      Text(
-                        _sizeLabel(file.byteLength),
-                        style: theme.textTheme.bodySmall?.copyWith(
+    return Material(
+      color: AppTheme.surface,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+        side: BorderSide(
+          color: selection != false ? AppTheme.accent : AppTheme.line,
+          width: selection != false ? 1.5 : 1,
+        ),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Semantics(
+        label:
+            '预览 ${file.name}，${entry.formatLabel}${entry.isPhotoEntry ? '，评分 $rating 星' : ''}',
+        child: InkWell(
+          key: ValueKey('preview-${entry.members.first.id}'),
+          onTap: onTap,
+          onLongPress: onToggleSelection,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const ColoredBox(color: AppTheme.raisedSurface),
+                    Center(
+                      child: ExcludeSemantics(
+                        child: Icon(
+                          entry.isPhotoEntry
+                              ? Icons.landscape_outlined
+                              : Icons.play_circle_outline,
+                          size: 32,
                           color: AppTheme.mutedText,
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Semantics(
+                        label:
+                            '$selectionLabel ${file.name}，${entry.members.length} 个文件',
+                        child: Tooltip(
+                          message: selectionLabel,
+                          child: SizedBox(
+                            key: ValueKey('select-${entry.members.first.id}'),
+                            width: 48,
+                            height: 48,
+                            child: Checkbox(
+                              value: selection,
+                              tristate: true,
+                              materialTapTargetSize:
+                                  MaterialTapTargetSize.padded,
+                              onChanged: (_) => onToggleSelection(),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ],
-            ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 9, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      file.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppTheme.text,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      entry.formatLabel,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${(entry.byteLength / (1024 * 1024)).toStringAsFixed(1)} MB · ${entry.members.length} 个文件',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: theme.textTheme.bodySmall,
+                    ),
+                    if (entry.isPhotoEntry) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        rating == 0 ? '未评分' : '★ $rating',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.accent,
+                        ),
+                      ),
+                    ],
+                    if (selection == null)
+                      Text(
+                        '部分已选',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: AppTheme.accent,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ),
-      ),
-    );
-  }
-
-  static String _sizeLabel(int bytes) {
-    final megabytes = bytes / (1024 * 1024);
-    return '${megabytes.toStringAsFixed(1)} MB';
-  }
-}
-
-class _ThumbnailPlaceholder extends StatelessWidget {
-  const _ThumbnailPlaceholder({required this.format, required this.selected});
-
-  final CameraFileFormat format;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final icon = switch (format) {
-      CameraFileFormat.raw || CameraFileFormat.jpeg => Icons.landscape_outlined,
-      CameraFileFormat.mp4 => Icons.play_circle_outline_rounded,
-      CameraFileFormat.avchd => Icons.movie_outlined,
-      CameraFileFormat.other => Icons.insert_drive_file_outlined,
-    };
-    final label = switch (format) {
-      CameraFileFormat.raw || CameraFileFormat.jpeg => 'PHOTO',
-      CameraFileFormat.mp4 || CameraFileFormat.avchd => 'VIDEO',
-      CameraFileFormat.other => 'FILE',
-    };
-
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        const ColoredBox(color: AppTheme.raisedSurface),
-        Positioned(
-          left: 14,
-          top: 13,
-          child: Text(
-            label,
-            style: Theme.of(context).textTheme.labelSmall
-                ?.copyWith(color: AppTheme.mutedText, letterSpacing: 1.5),
-          ),
-        ),
-        Center(child: Icon(icon, size: 42, color: const Color(0xFF85897D))),
-        Positioned(
-          right: 11,
-          top: 10,
-          child: Icon(
-            selected ? Icons.check_circle : Icons.circle_outlined,
-            size: 23,
-            color: selected ? AppTheme.accent : AppTheme.mutedText,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FormatBadge extends StatelessWidget {
-  const _FormatBadge({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      constraints: const BoxConstraints(minHeight: 24),
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppTheme.line),
-        borderRadius: BorderRadius.circular(6),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: AppTheme.mutedText,
-          letterSpacing: 0.4,
-          fontSize: 9,
         ),
       ),
     );

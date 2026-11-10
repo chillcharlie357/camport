@@ -11,9 +11,9 @@ class CameraTransferApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Frame — Sony Camera Transfer',
+      title: 'Sony 相机导入',
       debugShowCheckedModeBanner: false,
-      theme: AppTheme.dark,
+      theme: AppTheme.light,
       home: const _ConnectHome(),
     );
   }
@@ -66,14 +66,14 @@ class _ConnectHome extends StatelessWidget {
             return Align(
               alignment: Alignment.topCenter,
               child: SingleChildScrollView(
-                padding: EdgeInsets.fromLTRB(sideInset, 28, sideInset, 32),
+                padding: EdgeInsets.fromLTRB(sideInset, 20, sideInset, 24),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 1120),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const _TopBar(),
-                      SizedBox(height: isCompact ? 52 : 88),
+                      SizedBox(height: isCompact ? 36 : 56),
                       if (isCompact)
                         _MainContent(
                           isAndroid: _isAndroid,
@@ -103,7 +103,7 @@ class _ConnectHome extends StatelessWidget {
                         const SizedBox(height: 36),
                         const _TransferProfile(),
                       ],
-                      const SizedBox(height: 64),
+                      const SizedBox(height: 40),
                       const _Footer(),
                     ],
                   ),
@@ -127,55 +127,17 @@ class _TopBar extends StatelessWidget {
     return Row(
       children: [
         ExcludeSemantics(
-          child: Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              border: Border.all(color: colors.primary, width: 1.5),
-              borderRadius: BorderRadius.circular(13),
-            ),
-            child: Icon(
-              Icons.camera_alt_outlined,
-              color: colors.primary,
-              size: 21,
-            ),
-          ),
+          child: Icon(Icons.photo_camera_outlined, color: colors.primary),
         ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'FRAME',
-              style: Theme.of(context).textTheme.titleMedium
-                  ?.copyWith(letterSpacing: 2.4, fontWeight: FontWeight.w800),
-            ),
-            Text(
-              'SONY CAMERA TRANSFER',
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: colors.onSurfaceVariant,
-                fontSize: 9,
-                letterSpacing: 1.15,
-              ),
-            ),
-          ],
-        ),
+        const SizedBox(width: 10),
+        Text('相机导入', style: Theme.of(context).textTheme.titleMedium),
         const Spacer(),
         if (MediaQuery.sizeOf(context).width >= 480)
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 7,
-                height: 7,
-                decoration: BoxDecoration(
-                  color: colors.primary,
-                  shape: BoxShape.circle,
-                ),
-              ),
-              const SizedBox(width: 9),
               Text(
-                '本地传输',
+                'Sony 相机',
                 style: Theme.of(context).textTheme.bodySmall
                     ?.copyWith(color: colors.onSurfaceVariant),
               ),
@@ -208,30 +170,21 @@ class _MainContent extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Container(width: 26, height: 1, color: colors.primary),
-            const SizedBox(width: 11),
-            Text(
-              'CAMERA / 01',
-              style: textTheme.labelSmall?.copyWith(color: colors.primary),
-            ),
-          ],
-        ),
-        const SizedBox(height: 22),
         Text(
-          '把原片带回来。',
+          'Sony ZV-E10',
+          style: textTheme.labelLarge?.copyWith(color: colors.primary),
+        ),
+        const SizedBox(height: 12),
+        Text(
+          '导入相机照片',
           style: compact ? textTheme.headlineMedium : textTheme.displaySmall,
         ),
         const SizedBox(height: 16),
         ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 470),
-          child: Text(
-            '首版面向 ZV-E10。一代机的连接与导入正在接入；当前页面不会尝试连接相机。',
-            style: textTheme.bodyLarge,
-          ),
+          child: Text('相机连接功能仍在开发中。可先查看示例文件和格式筛选。', style: textTheme.bodyLarge),
         ),
-        const SizedBox(height: 36),
+        const SizedBox(height: 24),
         _CameraCard(
           isAndroid: isAndroid,
           platformName: platformName,
@@ -263,7 +216,7 @@ class _CameraCard extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -290,7 +243,7 @@ class _CameraCard extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text('Sony ZV-E10', style: textTheme.titleLarge),
+                      Text('ZV-E10', style: textTheme.titleLarge),
                       const SizedBox(height: 4),
                       Text('一代机型 · Wi-Fi', style: textTheme.bodyMedium),
                     ],
@@ -376,85 +329,78 @@ class _TransferProfile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colors = Theme.of(context).colorScheme;
     final textTheme = Theme.of(context).textTheme;
     final compact = MediaQuery.sizeOf(context).width < 720;
 
     return Container(
       width: double.infinity,
-      padding: EdgeInsets.all(compact ? 20 : 28),
+      padding: EdgeInsets.all(compact ? 18 : 22),
       decoration: BoxDecoration(
         color: AppTheme.surface,
         border: Border.all(color: AppTheme.line),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            '导入方式',
-            style: textTheme.labelSmall?.copyWith(color: colors.primary),
-          ),
-          const SizedBox(height: 17),
-          Text('保留原始文件', style: textTheme.titleLarge),
-          const SizedBox(height: 8),
-          Text('不缩小、不转码。导入前可以按格式筛选。', style: textTheme.bodyMedium),
-          const SizedBox(height: 23),
+          Text('支持的文件', style: textTheme.titleLarge),
+          const SizedBox(height: 16),
           const Divider(height: 1),
-          const SizedBox(height: 18),
-          Text('首版目标格式', style: textTheme.bodySmall),
-          const SizedBox(height: 12),
-          const Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              _FormatTag(label: 'RAW'),
-              _FormatTag(label: 'JPEG'),
-              _FormatTag(label: 'MP4'),
-            ],
-          ),
-          const SizedBox(height: 22),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Icon(Icons.folder_outlined, size: 18, color: colors.primary),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  '文件保存在你的设备上',
-                  style: textTheme.bodySmall?.copyWith(
-                    color: colors.onSurfaceVariant,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          const SizedBox(height: 4),
+          _FormatLine(label: '照片', formats: 'RAW  ·  JPEG'),
+          const Divider(height: 1),
+          _FormatLine(label: '视频', formats: 'MP4  ·  MTS'),
+          const Divider(height: 1),
+          const SizedBox(height: 14),
+          Text('目标：原文件导入，不缩小、不转码。', style: textTheme.bodyMedium),
         ],
       ),
     );
   }
 }
 
-class _FormatTag extends StatelessWidget {
-  const _FormatTag({required this.label});
+class _FormatLine extends StatelessWidget {
+  const _FormatLine({required this.label, required this.formats});
 
   final String label;
+  final String formats;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
-      label: '$label 文件',
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
-        decoration: BoxDecoration(
-          border: Border.all(color: AppTheme.line),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall
-              ?.copyWith(color: AppTheme.text, letterSpacing: 0.8),
-        ),
+      label: '$label：$formats',
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final largeText = MediaQuery.textScalerOf(context).scale(16) >= 20;
+          if (constraints.maxWidth < 300 || largeText) {
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.bodyMedium),
+                  const SizedBox(height: 4),
+                  Text(formats, style: Theme.of(context).textTheme.titleMedium),
+                ],
+              ),
+            );
+          }
+
+          return SizedBox(
+            height: 48,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodyMedium,
+                  ),
+                ),
+                Text(formats, style: Theme.of(context).textTheme.titleMedium),
+              ],
+            ),
+          );
+        },
       ),
     );
   }
@@ -469,17 +415,9 @@ class _Footer extends StatelessWidget {
 
     return Row(
       children: [
-        ExcludeSemantics(
-          child: Icon(
-            Icons.lock_outline,
-            size: 16,
-            color: colors.onSurfaceVariant,
-          ),
-        ),
-        const SizedBox(width: 9),
         Expanded(
           child: Text(
-            '设计目标：本地 Wi-Fi 传输，不需要云端账号。',
+            '当前为示例界面；连接相机后会显示实际文件。',
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: colors.onSurfaceVariant),
           ),

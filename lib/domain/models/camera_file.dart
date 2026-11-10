@@ -1,6 +1,7 @@
 enum CameraFileFormat {
   raw,
   jpeg,
+  png,
   mp4,
   avchd,
   other;
@@ -16,6 +17,7 @@ enum CameraFileFormat {
     return switch (extension) {
       'arw' => CameraFileFormat.raw,
       'jpg' || 'jpeg' => CameraFileFormat.jpeg,
+      'png' => CameraFileFormat.png,
       'mp4' => CameraFileFormat.mp4,
       'mts' || 'm2ts' => CameraFileFormat.avchd,
       _ => CameraFileFormat.other,

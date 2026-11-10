@@ -1,31 +1,31 @@
 import 'package:flutter/material.dart';
 
 abstract final class AppTheme {
-  static const canvas = Color(0xFF111310);
-  static const surface = Color(0xFF1B1E19);
-  static const raisedSurface = Color(0xFF22261F);
-  static const accent = Color(0xFFFFB454);
-  static const text = Color(0xFFF2F0E9);
-  static const mutedText = Color(0xFFB4B7AD);
-  static const line = Color(0xFF393D35);
+  static const canvas = Color(0xFFF3F4F5);
+  static const surface = Color(0xFFFFFFFF);
+  static const raisedSurface = Color(0xFFE9ECEF);
+  static const accent = Color(0xFF3C6489);
+  static const text = Color(0xFF252A30);
+  static const mutedText = Color(0xFF66717E);
+  static const line = Color(0xFFD4D9DE);
 
-  static ThemeData get dark {
-    const scheme = ColorScheme.dark(
+  static ThemeData get light {
+    const scheme = ColorScheme.light(
       primary: accent,
-      onPrimary: Color(0xFF241607),
-      secondary: Color(0xFFC5C9BB),
-      onSecondary: Color(0xFF20231D),
+      onPrimary: Color(0xFFFFFFFF),
+      secondary: Color(0xFF526170),
+      onSecondary: Color(0xFFFFFFFF),
       surface: surface,
       onSurface: text,
       onSurfaceVariant: mutedText,
       outline: line,
-      error: Color(0xFFFFB4A9),
-      onError: Color(0xFF690005),
+      error: Color(0xFFB3261E),
+      onError: Color(0xFFFFFFFF),
     );
 
     return ThemeData(
       useMaterial3: true,
-      brightness: Brightness.dark,
+      brightness: Brightness.light,
       colorScheme: scheme,
       scaffoldBackgroundColor: canvas,
       dividerColor: line,
@@ -79,17 +79,17 @@ abstract final class AppTheme {
         elevation: 0,
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(12),
           side: const BorderSide(color: line),
         ),
       ),
       filledButtonTheme: FilledButtonThemeData(
         style: FilledButton.styleFrom(
           minimumSize: const Size(160, 52),
-          backgroundColor: accent,
-          foregroundColor: const Color(0xFF241607),
-          disabledBackgroundColor: const Color(0xFF34372F),
-          disabledForegroundColor: const Color(0xFF92958C),
+          backgroundColor: const Color(0xFF303841),
+          foregroundColor: const Color(0xFFFFFFFF),
+          disabledBackgroundColor: const Color(0xFFE0E4E8),
+          disabledForegroundColor: const Color(0xFF66717E),
           textStyle: const TextStyle(
             fontWeight: FontWeight.w700,
             fontSize: 15,

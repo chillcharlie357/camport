@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 
 import '../../app/app_theme.dart';
+import '../../data/local/gallery_preferences.dart';
 import '../../domain/ports/camera_adapter.dart';
 import 'camera_file_tile.dart';
 import 'format_filter_row.dart';
 import 'gallery_controller.dart';
+import 'photo_preview_screen.dart';
 
 class GalleryScreen extends StatefulWidget {
-  const GalleryScreen({required this.adapter, super.key});
+  const GalleryScreen({required this.adapter, this.preferences, super.key});
 
   final CameraAdapter adapter;
+  final GalleryPreferences? preferences;
 
   @override
   State<GalleryScreen> createState() => _GalleryScreenState();
@@ -21,7 +24,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
   @override
   void initState() {
     super.initState();
-    _controller = GalleryController(adapter: widget.adapter);
+    _controller = GalleryController(
+      adapter: widget.adapter,
+      preferences: widget.preferences,
+    );
   }
 
   @override
@@ -50,11 +56,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
           appBar: AppBar(
             title: const Text('图库'),
             actions: [
-              IconButton(
-                tooltip: '重新载入示例文件',
-                onPressed: _controller.isLoading ? null : _controller.loadFiles,
-                icon: const Icon(Icons.refresh_rounded),
-              ),
+              GalleryOverflowMenu(controller: _controller, allowReload: true),
             ],
           ),
           body: SafeArea(
@@ -67,29 +69,40 @@ class _GalleryScreenState extends State<GalleryScreen> {
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
-                        child: Row(
+                        child: Wrap(
+                          spacing: 16,
+                          runSpacing: 8,
+                          crossAxisAlignment: WrapCrossAlignment.center,
                           children: [
-                            Expanded(
-                              child: Text(
-                                '文件',
-                                style: Theme.of(context).textTheme.titleLarge,
-                              ),
+                            Text(
+                              '文件',
+                              style: Theme.of(context).textTheme.titleLarge,
                             ),
                             Text(
-                              '${_controller.visibleFiles.length} 个',
+                              '${_controller.visibleEntries.length} 项 · ${_controller.visibleFiles.length} 个文件',
                               style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            Text(
+                              '${GalleryFormatFilter(format: _controller.activeFormat, count: 0).label} · ${_controller.mergeRawJpeg ? '合并显示' : '独立显示'}',
+                              style: Theme.of(context).textTheme.bodySmall,
                             ),
                           ],
                         ),
                       ),
                     ),
-                    SliverToBoxAdapter(
-                      child: FormatFilterRow(
-                        filters: _controller.filters,
-                        activeFormat: _controller.activeFormat,
-                        onSelected: _controller.selectFormat,
+                    if (_controller.persistenceError != null)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
+                          child: TextButton(
+                            style: TextButton.styleFrom(
+                              minimumSize: const Size(48, 48),
+                            ),
+                            onPressed: _controller.preferences.retry,
+                            child: const Text('本机设置读取或保存失败，点击重试'),
+                          ),
+                        ),
                       ),
-                    ),
                     if (_controller.isLoading)
                       const SliverFillRemaining(
                         hasScrollBody: false,
@@ -132,9 +145,15 @@ class _GalleryScreenState extends State<GalleryScreen> {
   }
 
   Widget _buildFileGrid(double width) {
-    final columns = width < 720 ? 2 : (width / 260).floor().clamp(3, 6).toInt();
-    final tileWidth = (width - 40 - (columns - 1) * 12) / columns;
-    final tileHeight = (tileWidth * 1.38).clamp(248.0, 370.0).toDouble();
+    const gridGap = 8.0;
+    final scale = MediaQuery.textScalerOf(context).scale(14) / 14;
+    final columns = (width / (scale > 1.4 ? 320 : 220))
+        .floor()
+        .clamp(width < 360 || scale > 1.4 ? 1 : 2, 6)
+        .toInt();
+    final tileWidth = (width - 40 - (columns - 1) * gridGap) / columns;
+    final tileHeight = tileWidth * .75 + 142 * scale;
+    final entries = _controller.visibleEntries;
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -142,17 +161,24 @@ class _GalleryScreenState extends State<GalleryScreen> {
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columns,
           mainAxisExtent: tileHeight,
-          crossAxisSpacing: 12,
-          mainAxisSpacing: 12,
+          crossAxisSpacing: gridGap,
+          mainAxisSpacing: gridGap,
         ),
         delegate: SliverChildBuilderDelegate((context, index) {
-          final file = _controller.visibleFiles[index];
+          final entry = entries[index];
           return CameraFileTile(
-            file: file,
-            selected: _controller.isSelected(file),
-            onTap: () => _controller.toggleSelection(file),
+            entry: entry,
+            selection: _controller.selectionFor(entry),
+            rating: _controller.ratingFor(entry),
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    PhotoPreviewScreen(entry: entry, controller: _controller),
+              ),
+            ),
+            onToggleSelection: () => _controller.toggleEntrySelection(entry),
           );
-        }, childCount: _controller.visibleFiles.length),
+        }, childCount: entries.length),
       ),
     );
   }
@@ -163,30 +189,30 @@ class _PreviewNotice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 8, 20, 0),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        border: Border.all(color: AppTheme.line),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.info_outline, size: 18, color: AppTheme.accent),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              '本地预览 · 示例文件',
-              style: Theme.of(context).textTheme.labelLarge,
-            ),
-          ),
-          Text(
-            '未连接相机',
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final largeText = MediaQuery.textScalerOf(context).scale(16) >= 20;
+          final title = Text(
+            '示例图库',
+            style: Theme.of(context).textTheme.titleMedium,
+          );
+          final state = Text(
+            '未连接 · 不会传输',
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: AppTheme.mutedText),
-          ),
-        ],
+          );
+
+          if (constraints.maxWidth < 300 || largeText) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [title, const SizedBox(height: 4), state],
+            );
+          }
+
+          return Row(children: [title, const Spacer(), state]);
+        },
       ),
     );
   }
@@ -238,9 +264,9 @@ class _SelectionBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final countLabel = Semantics(
       liveRegion: true,
-      label: '已选择 $selectedCount 项',
+      label: '已选择 $selectedCount 个文件',
       child: Text(
-        '已选 $selectedCount 项',
+        '已选 $selectedCount 个文件',
         style: Theme.of(context).textTheme.titleMedium,
       ),
     );
