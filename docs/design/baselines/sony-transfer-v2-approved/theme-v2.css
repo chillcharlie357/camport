@@ -1,0 +1,53 @@
+
+@font-face{font-family:"Noto Sans SC";src:url("assets/fonts/NotoSansSC-ui.woff2") format("woff2");font-style:normal;font-weight:100 900;font-display:swap}
+@font-face{font-family:"IBM Plex Sans";src:url("assets/fonts/IBMPlexSans-ui.woff2") format("woff2");font-style:normal;font-weight:100 700;font-display:swap}
+:root{--canvas:#f3f4f5;--surface:#fff;--raised:#eceff2;--accent:#3c6489;--text:#252a30;--muted:#66717e;--line:#d4d9de;--success:#3b755b}
+body{font-family:"IBM Plex Sans","Noto Sans SC",sans-serif;font-weight:400;font-optical-sizing:auto;background:#e9ecef;color:#252a30}
+button{font-family:inherit;font-weight:500}
+.phone,.desktop{color:var(--text);background:var(--canvas)}
+.phone{box-shadow:0 3px 12px #17222d0c;border-color:#bfc8d0}
+.phone h1{font-size:26px;font-weight:500;line-height:1.45;letter-spacing:0;margin-bottom:14px}
+.phone h2{font-size:19px;font-weight:500;letter-spacing:0}
+.phone .large{font-size:23px;font-weight:500}
+.phone p{font-size:14px;line-height:1.75}
+.phone b,.phone strong{font-weight:500}
+.apphead strong{font-size:18px;font-weight:500}
+.primary{background:#303841;color:#fff;font-weight:500;font-size:14px;box-shadow:none}
+.primary:hover:not(:disabled){background:#424e5b}
+.primary:disabled{background:#e1e5e9;color:#76818c}
+.secondary{color:var(--text);border-color:#8c99a6;font-weight:500}
+.textbtn{font-weight:500}.textbtn:hover{color:#252a30}.iconbtn{color:#4a5765}
+.eyebrow{font-size:12px;color:var(--muted);letter-spacing:0;font-weight:400;margin-bottom:10px}
+.board-header .kicker{letter-spacing:0;font-size:13px;color:#687481}
+.board-header h1{font-size:32px;font-weight:500;letter-spacing:0}
+.boardnav button{background:#303841;color:#fff;border-color:#303841;font-weight:500}
+.sectiontop h2{font-weight:500;letter-spacing:0;font-size:23px}.screen-label h3{font-weight:500}.sectionnum{border-top-color:#8995a1}
+.chip.chosen{background:#e5edf5;border-color:#3c6489;color:#315778}
+.chip{font-weight:400;border-color:#9aa6b2;color:#526170;background:#fff}
+.selected .tick{background:#3c6489;color:#fff;border-color:#3c6489}.selected .thumb{outline-color:#3c6489}
+.fileinfo{font-size:11.5px;letter-spacing:0;font-variant-numeric:tabular-nums}.fileinfo em{font-family:inherit;font-size:10px;font-weight:400;color:#526170;border-color:#b2bcc6}
+.tile>small{font-size:11px;font-variant-numeric:tabular-nums;color:#66717e}
+.datebar{font-size:11px;letter-spacing:0}.selection{background:#fff}.selection b{font-size:13px;font-weight:500}.selection small{font-size:11px}.selection .primary{font-size:13px}
+.bottomnav{background:#f3f4f5}.bottomnav button{color:#647281;font-weight:400}.bottomnav .active{color:#315778}
+.status{color:#3b755b}.status.warn{color:#66717e}.home-indicator:after{background:#89939d}
+.steps b{font-weight:500}.steps .current>span{background:#3c6489;color:#fff;border-color:#3c6489}
+.sysdialog{background:#fff;border-color:#b0bac4;box-shadow:0 5px 22px #17222d14}.sysdialog .systemicon{color:#526170}
+.sheet{background:#fff;border-top-color:#bbc5ce;box-shadow:0 -12px 32px #17222d14}
+.destination{background:#f7f9fa;border-color:#c5cdd5}.destination .ico{color:#566778}.destination b{font-weight:500}
+.inline-note{background:#e9edf1;color:#526170}.inline-note .ico{color:#526b82}
+.complete-mark{color:#3b755b;border-color:#96b29f;background:#eaf1ed}.warning-mark{color:#7b6648;border-color:#b2a285;background:#f1eee8}
+.track{background:#dce2e8}.track i{background:#3c6489}.speed b{font-family:"IBM Plex Sans","Noto Sans SC",sans-serif;font-weight:400}
+.bigcount{font-family:"IBM Plex Sans","Noto Sans SC",sans-serif;font-size:44px;font-weight:400;letter-spacing:-.5px}
+.bigcount span{font-size:14px;font-weight:400}.compact{background:#fff;border-color:#c7d0d8}
+.metagrid b{font-weight:400}.metagrid small{font-size:11px}.metadata .format{color:#526170;border-color:#9aa6b2}
+.picked{background:#e5edf5;border-color:#3c6489}.picked .ico{color:#3c6489}
+.desktop .windowbar{background:#e8ebee;color:#66717e;border-bottom-color:#c5cdd5}.desktopbody{background:#f3f4f5}
+.sidebar{background:#f7f8fa;border-right-color:#d4d9de}.desktopbrand{font-weight:500}.desktopbrand .ico{color:#526170}
+.sidecamera{background:#fff;border-color:#b1bdc8}.sideitem.on{background:#e5edf5;color:#315778}.sideitem{font-weight:400}
+.inspector{background:#fff;border-left-color:#d4d9de}.inspector h3{font-weight:500}.inspectorbottom button{color:#303841}
+.desktophead h2{font-size:21px;font-weight:500}.desktopgrid .fileinfo{font-size:12px}.desktopgrid .tile small{font-size:11px}
+.desktop-progress h1{font-weight:400;font-family:"IBM Plex Sans","Noto Sans SC",sans-serif}.desktopselection .primary{color:#fff}
+.preview-image{background:#181b1e}.preview-image>span{color:#fff}.duration{color:#fff}.tick{border-color:#ffffffdc}
+.osbar{color:#38424c}.viewer{background:#e9ecef}.viewer-toolbar button{color:#38424c;border-color:#9aa6b2}
+.printtop b{font-weight:500}.tablehead,.tablerow{font-variant-numeric:tabular-nums}
+@media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
