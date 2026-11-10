@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from tool.release import build_version, eligible_pr, prepare, publish
+from tool.release import build_version, eligible_pr, prepare, publish, tag_commit
 import json
 
 
@@ -16,6 +16,8 @@ class ReleaseTests(unittest.TestCase):
             directory = Path(temp)
             event = directory / 'event.json'
             output = directory / 'output'
+            pubspec = directory / 'pubspec.yaml'
+            pubspec.write_text('version: 0.1.0+1\n')
             event.write_text(json.dumps({'ref': 'refs/heads/main'}))
             pr = {'number': 12, 'merged_at': '2026-11-10T10:00:00Z',
                   'merge_commit_sha': SHA,
@@ -26,7 +28,7 @@ class ReleaseTests(unittest.TestCase):
             with patch.dict('os.environ', environment), \
                     patch('tool.release.gh_command', side_effect=[[], [pr]]), \
                     patch('tool.release.time.sleep') as sleep:
-                prepare()
+                prepare(pubspec)
             self.assertIn('version=0.1.3\n', output.read_text())
             self.assertIn(f'sha={SHA}\n', output.read_text())
             self.assertIn('publish=true\n', output.read_text())
@@ -97,7 +99,7 @@ class ReleaseTests(unittest.TestCase):
             calls = []
             def gh(*args):
                 calls.append(args)
-                if args[0] == "api" and "/commits/" in args[1]:
+                if args[0] == "api" and "/git/ref/tags/" in args[1]:
                     return None
                 if args[0] == "api" and "/releases/tags/" in args[1]:
                     if not any(c[:2] == ("release", "upload") for c in calls):
@@ -123,7 +125,7 @@ class ReleaseTests(unittest.TestCase):
                 calls = []
                 def gh(*args):
                     calls.append(args)
-                    return {"sha": commit} if "/commits/" in args[1] else release
+                    return {"object": {"type": "commit", "sha": commit}} if "/git/ref/tags/" in args[1] else release
                 with self.assertRaises(ValueError):
                     publish(directory, "0.1.1", SHA, "owner/repo", 12, gh=gh)
                 self.assertTrue(all(c[0] == "api" for c in calls))
@@ -135,8 +137,8 @@ class ReleaseTests(unittest.TestCase):
             calls = []
             def gh(*args):
                 calls.append(args)
-                if "/commits/" in args[1]:
-                    return {"sha": SHA}
+                if "/git/ref/tags/" in args[1]:
+                    return {"object": {"type": "commit", "sha": SHA}}
                 return {"id": 1, "draft": False, "target_commitish": SHA,
                         "assets": [{"name": n} for n in names]}
             publish(directory, "0.1.1", SHA, "owner/repo", 12, gh=gh)
@@ -165,8 +167,8 @@ class ReleaseTests(unittest.TestCase):
             calls = []
             def gh(*args):
                 calls.append(args)
-                if args[0] == 'api' and '/commits/' in args[1]:
-                    return {'sha': SHA}
+                if args[0] == 'api' and '/git/ref/tags/' in args[1]:
+                    return {'object': {'type': 'commit', 'sha': SHA}}
                 if args[0] == 'api' and '/releases/tags/' in args[1]:
                     return {'id': 1, 'draft': True, 'target_commitish': SHA,
                             'assets': [{'name': n} for n in expected]}
@@ -175,6 +177,17 @@ class ReleaseTests(unittest.TestCase):
             self.assertFalse(any(c[:2] == ('release', 'create') for c in calls))
             self.assertTrue(any(c[:2] == ('release', 'upload') for c in calls))
             self.assertIn('draft=false', calls[-1])
+
+    def test_annotated_tag_is_peeled_using_tag_namespace(self):
+        calls = []
+        def gh(*args):
+            calls.append(args)
+            if '/git/ref/tags/' in args[1]:
+                return {'object': {'type': 'tag', 'sha': 'c' * 40}}
+            return {'object': {'type': 'commit', 'sha': SHA}}
+        self.assertEqual(tag_commit('owner/repo', 'v0.1.1', gh), SHA)
+        self.assertIn('/git/ref/tags/v0.1.1', calls[0][1])
+        self.assertIn('/git/tags/', calls[1][1])
 
 
 if __name__ == "__main__":

@@ -37,7 +37,7 @@ def gh_command(*args):
                             capture_output=True, check=False)
     if result.returncode:
         if (args[0] == "api" and args[1].startswith("repos/")
-                and ("/releases/tags/" in args[1] or "/commits/v" in args[1])
+                and ("/releases/tags/" in args[1] or "/git/ref/tags/" in args[1])
                 and "(HTTP 404)" in result.stderr):
             return None
         raise RuntimeError(result.stderr.strip() or "gh command failed")
@@ -54,6 +54,20 @@ def digest(path):
     return hasher.hexdigest()
 
 
+def tag_commit(repo, tag, gh):
+    ref = gh("api", f"repos/{repo}/git/ref/tags/{tag}")
+    if not ref:
+        return None
+    obj = ref["object"]
+    for _ in range(10):
+        if obj["type"] == "commit":
+            return obj["sha"]
+        if obj["type"] != "tag":
+            raise ValueError("Release tag does not reference a commit")
+        obj = gh("api", f"repos/{repo}/git/tags/{obj['sha']}")["object"]
+    raise ValueError("Too many nested annotated tags")
+
+
 def publish(directory, version, sha, repo, pr_number, gh=gh_command):
     if not re.fullmatch(r"\d+\.\d+\.\d+", version) or not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("Invalid version or commit SHA")
@@ -67,8 +81,8 @@ def publish(directory, version, sha, repo, pr_number, gh=gh_command):
            for p in directory.iterdir()):
         raise ValueError("Release assets must be nonempty regular files")
     tag = f"v{version}"
-    commit = gh("api", f"repos/{repo}/commits/{tag}")
-    if commit and commit["sha"] != sha:
+    commit = tag_commit(repo, tag, gh)
+    if commit and commit != sha:
         raise ValueError("Existing tag points to a different commit")
     release = gh("api", f"repos/{repo}/releases/tags/{tag}")
     expected = package_names | generated
@@ -104,7 +118,7 @@ def publish(directory, version, sha, repo, pr_number, gh=gh_command):
        "-F", "draft=false", "-f", "make_latest=legacy")
 
 
-def prepare():
+def prepare(pubspec_path=Path("pubspec.yaml")):
     event = json.loads(Path(os.environ["GITHUB_EVENT_PATH"]).read_text())
     repo = os.environ["GITHUB_REPOSITORY"]
     sha = os.environ["GITHUB_SHA"]
@@ -122,7 +136,7 @@ def prepare():
     outputs = {"publish": "false"}
     if pr_number is not None:
         run_number = int(os.environ["GITHUB_RUN_NUMBER"])
-        version = build_version(Path("pubspec.yaml").read_text(), run_number)
+        version = build_version(pubspec_path.read_text(), run_number)
         outputs.update(publish="true", version=version, build_number=str(run_number),
                        sha=sha, pr_number=str(pr_number))
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as target:

@@ -10,8 +10,9 @@
 
 ## Tasks
 
-- [x] Add `tool/release.py` and `tool/tests/test_release.py`; verify missing implementation first, then check event fixtures, version bounds, draft retries, tag ownership and complete asset publication. Eleven tests pass locally.
+- [x] Add `tool/release.py` and `tool/tests/test_release.py`; verify missing implementation first, then check event fixtures, version bounds, draft retries, tag ownership and complete asset publication. Twelve tests pass locally, including annotated tag resolution.
 - [x] Add `.github/actions/setup-flutter/action.yml` and reusable `.github/workflows/build.yml`; implement signed Android release, macOS archive plus iOS no-sign compile, and Windows complete bundle archive. Native build results are tracked separately below.
 - [x] Add `.github/workflows/ci.yml` and `release.yml`; verify read-only PR execution, merged-main commit gating, scoped signing secrets and publish-only write permissions. Actionlint passes locally.
-- [ ] Configure stable Android signing with ignored private backup and repository secrets. Check workflow syntax, release logic, formatting, analysis and Flutter tests; inspect remote CI results after pushing.
-- [ ] Commit changes and update existing PR #1. Record which remote builds passed and whether first post-merge Release has actually run; do not merge the app PR just to test publication.
+- [x] Configure stable Android signing with ignored private backup and repository secrets. Check workflow syntax, release logic, formatting, analysis and 41 Flutter tests locally.
+- [x] Commit changes and update existing PR #1. Remote results are recorded in the PR's Actions checks. The first post-merge Release has not run; do not merge the app PR just to test publication.
+- [ ] Confirm the final commit's native build results in GitHub Actions; no native build success is implied by local static checks.
