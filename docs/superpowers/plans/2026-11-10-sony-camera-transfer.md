@@ -164,17 +164,17 @@ The initial Android feature should keep the protocol adapter, queue, and gallery
 - Create: `lib/domain/models/transfer_job.dart`
 - Create: `lib/domain/models/transfer_progress.dart`
 
-- [ ] Add `CameraCapabilities` with booleans for `canListFiles`, `hasThumbnails`, `canDownloadOriginals`, `canRemoteControl`, and `hasLiveView`.
-- [ ] Add `CameraFile` with `id`, `name`, `extension`, `format`, `byteLength`, optional `capturedAt`, optional `duration`, and optional `thumbnailKey`.
-- [ ] Define `CameraFileFormat` in `camera_file.dart` with values `raw`, `jpeg`, `mp4`, `avchd`, and `other`; map file extensions case-insensitively in `fromFileName`.
-- [ ] Add `CameraProfile` with `id`, `displayName`, optional `model`, optional `firmware`, `ConnectionKind connectionKind`, and locally stored connection configuration.
-- [ ] Define `ConnectionKind` with `cameraAccessPoint`, `sharedWifi`, and `usb` values.
-- [ ] Add `TransferJob` with `id`, `cameraFileId`, `destinationPath`, `state`, `bytesTransferred`, `totalBytes`, `attemptCount`, and optional `lastError`.
-- [ ] Define transfer states exactly as `queued`, `connecting`, `copying`, `interrupted`, `completed`, `cancelled`, and `failed`.
-- [ ] Add `TransferProgress` with `bytesTransferred` and nullable `totalBytes` fields.
-- [ ] Add `CameraPage<T>` with `items` and nullable `nextCursor` fields.
-- [ ] Add `NetworkConnectionResult` with `connected`, `requiresUserAction`, and nullable `message` fields.
-- [ ] Implement `CameraFileFormat.fromFileName(String name)` to map `.ARW` to `raw`, `.JPG`/`.JPEG` to `jpeg`, `.MP4` to `mp4`, `.MTS`/`.M2TS` to `avchd`, and preserve `other` for formats not yet mapped.
+- [x] Add `CameraCapabilities` with booleans for `canListFiles`, `hasThumbnails`, `canDownloadOriginals`, `canRemoteControl`, and `hasLiveView`.
+- [x] Add `CameraFile` with `id`, `name`, `extension`, `format`, `byteLength`, optional `capturedAt`, optional `duration`, and optional `thumbnailKey`.
+- [x] Define `CameraFileFormat` in `camera_file.dart` with values `raw`, `jpeg`, `mp4`, `avchd`, and `other`; map file extensions case-insensitively in `fromFileName`.
+- [x] Add `CameraProfile` with `id`, `displayName`, optional `model`, optional `firmware`, `ConnectionKind connectionKind`, and locally stored connection configuration.
+- [x] Define `ConnectionKind` with `cameraAccessPoint`, `sharedWifi`, and `usb` values.
+- [x] Add `TransferJob` with `id`, `cameraFileId`, `destinationPath`, `state`, `bytesTransferred`, `totalBytes`, `attemptCount`, and optional `lastError`.
+- [x] Define transfer states exactly as `queued`, `connecting`, `copying`, `interrupted`, `completed`, `cancelled`, and `failed`.
+- [x] Add `TransferProgress` with `bytesTransferred` and nullable `totalBytes` fields.
+- [x] Add `CameraPage<T>` with `items` and nullable `nextCursor` fields.
+- [x] Add `NetworkConnectionResult` with `connected`, `requiresUserAction`, and nullable `message` fields.
+- [x] Implement `CameraFileFormat.fromFileName(String name)` to map `.ARW` to `raw`, `.JPG`/`.JPEG` to `jpeg`, `.MP4` to `mp4`, `.MTS`/`.M2TS` to `avchd`, and preserve `other` for formats not yet mapped.
 
 ### Task 7: Define the capability-based adapter boundary
 
