@@ -5,9 +5,9 @@ enum CameraFileFormat {
   avchd,
   other;
 
-  static CameraFileFormat fromFilename(String filename) {
-    final extension = filename
-        .substring(filename.lastIndexOf('.') + 1)
+  static CameraFileFormat fromFileName(String name) {
+    final extension = name
+        .substring(name.lastIndexOf('.') + 1)
         .toLowerCase();
 
     return switch (extension) {
