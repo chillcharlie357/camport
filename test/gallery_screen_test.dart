@@ -83,6 +83,7 @@ void main() {
       await tester.tap(find.byTooltip('评分 4 星'));
       await tester.pumpAndSettle();
       expect(find.text('4 / 5 星'), findsOneWidget);
+      expect(find.textContaining('本机原文件和相机原文件尚未写入'), findsOneWidget);
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.text('已选 0 个文件'), findsOneWidget);

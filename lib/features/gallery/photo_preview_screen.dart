@@ -163,7 +163,9 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
                             ),
                           ],
                         ),
-                        const Text('同名 RAW/JPG/PNG 共用评分，评分保存于本机。'),
+                        const Text('同名 RAW/JPG/PNG 共用评分。'),
+                        const SizedBox(height: 8),
+                        const Text('评分已暂存；本机原文件和相机原文件尚未写入。'),
                       ],
                       if (widget.controller.persistenceError != null)
                         TextButton(
