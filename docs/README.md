@@ -20,3 +20,4 @@
 
 - [实施计划与进度](superpowers/plans/2026-11-10-sony-camera-transfer.md)。
 - [Android 参考应用静态协议线索](research/android-protocol-evidence.md)：包哈希、IEM 媒体访问分支和评分写回的证据边界。
+- [CI/CD 与自动 Release](superpowers/specs/2026-11-10-cicd-release-design.md)：合并触发、版本规则、签名和失败恢复。

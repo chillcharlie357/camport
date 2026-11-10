@@ -36,3 +36,9 @@ flutter run -d macos
 ```
 
 Android、iOS 和 Windows 分别使用对应平台工具链构建。应用中的连接与导入目前显示未实现提示，示例图库不会连接设备或传输原片。
+
+## 自动检查与发布
+
+指向 main 的 PR 自动执行格式、分析、测试和原生构建检查。PR 合并到 main 后，自动生成递增版本，发布签名 Android APK、macOS app 压缩包、Windows x64 完整运行包，以及 SHA-256 校验清单。iOS 只做无签名编译检查，不发布可安装 IPA；macOS 暂为 ad-hoc 签名、未公证，Windows 暂无 Authenticode 签名。
+
+直接 push main 不发布；失败构建不公开不完整 Release；重跑已发布版本不覆盖附件。版本、签名和恢复规则见 [CI/CD 发布说明](docs/superpowers/specs/2026-11-10-cicd-release-design.md)。

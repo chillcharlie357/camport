@@ -1,0 +1,168 @@
+name: Native packages
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      build_number:
+        required: true
+        type: string
+      signed:
+        type: boolean
+        default: false
+    secrets:
+      ANDROID_KEYSTORE_BASE64:
+        required: false
+      ANDROID_KEYSTORE_PASSWORD:
+        required: false
+      ANDROID_KEY_ALIAS:
+        required: false
+      ANDROID_KEY_PASSWORD:
+        required: false
+
+permissions:
+  contents: read
+
+env:
+  FLUTTER_SUPPRESS_ANALYTICS: 'true'
+  BUILD_NAME: ${{ inputs.version }}
+  BUILD_NUMBER: ${{ inputs.build_number }}
+
+jobs:
+  android:
+    name: Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - name: Set temporary signing path
+        run: printf 'ANDROID_KEYSTORE_PATH=%s/sony-camera-release.p12\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+      - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: ./.github/actions/setup-flutter
+      - name: Restore release signing key
+        if: inputs.signed
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          umask 077
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          for key in ('ANDROID_KEYSTORE_BASE64', 'ANDROID_KEYSTORE_PASSWORD',
+                      'ANDROID_KEY_ALIAS', 'ANDROID_KEY_PASSWORD'):
+              if not os.environ.get(key):
+                  raise SystemExit(f'Missing required signing secret: {key}')
+          Path(os.environ['ANDROID_KEYSTORE_PATH']).write_bytes(
+              base64.b64decode(os.environ['ANDROID_KEYSTORE_BASE64'].strip(), validate=True))
+          PY
+      - name: Create disposable CI validation key
+        if: ${{ !inputs.signed }}
+        run: |
+          keytool -genkeypair -keystore "$ANDROID_KEYSTORE_PATH" -storetype PKCS12 \
+            -storepass ci-validation-only -keypass ci-validation-only \
+            -alias ci-validation -keyalg RSA -keysize 2048 -validity 1 \
+            -dname 'CN=CI validation only' -noprompt
+      - name: Build and verify release-mode APK
+        env:
+          DISTRIBUTION_BUILD: ${{ inputs.signed }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          suffix=android.apk
+          if [[ "$DISTRIBUTION_BUILD" != true ]]; then
+            export ANDROID_KEYSTORE_PASSWORD=ci-validation-only
+            export ANDROID_KEY_PASSWORD=ci-validation-only
+            export ANDROID_KEY_ALIAS=ci-validation
+            suffix=android-validation.apk
+          fi
+          flutter build apk --release --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          signers=("$ANDROID_HOME"/build-tools/*/apksigner)
+          "${signers[-1]}" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
+          mkdir -p dist
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/sony-camera-$BUILD_NAME-$suffix"
+      - name: Remove temporary key
+        if: always()
+        run: |
+          if [[ -n "${ANDROID_KEYSTORE_PATH:-}" ]]; then
+            rm -f "$ANDROID_KEYSTORE_PATH"
+          fi
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: package-android
+          path: dist/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  apple:
+    name: macOS package and iOS compile check
+    runs-on: macos-15
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-flutter
+      - name: Build macOS and package app bundle
+        run: |
+          flutter build macos --release --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+          app=build/macos/Build/Products/Release/sony_camera.app
+          lipo -archs "$app/Contents/MacOS/sony_camera"
+          codesign --force --sign - --preserve-metadata=entitlements "$app"
+          codesign --verify --deep --strict "$app"
+          mkdir -p dist
+          ditto -c -k --sequesterRsrc --keepParent "$app" "dist/sony-camera-$BUILD_NAME-macos.zip"
+      - name: Compile iOS without distribution signing
+        run: flutter build ios --release --no-codesign --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: package-macos
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
+
+  windows:
+    name: Windows x64
+    runs-on: windows-2022
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+      - uses: ./.github/actions/setup-flutter
+      - name: Build and archive complete Windows bundle
+        shell: pwsh
+        run: |
+          flutter build windows --release --build-name $env:BUILD_NAME --build-number $env:BUILD_NUMBER
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $bundle = 'build/windows/x64/runner/Release'
+          $vswhere = "${env:ProgramFiles(x86)}/Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if (-not $vs) { throw 'Visual C++ build tools not found' }
+          $crt = Get-ChildItem "$vs/VC/Redist/MSVC/*/x64/Microsoft.VC*.CRT" -Directory | Sort-Object FullName | Select-Object -Last 1
+          if (-not $crt) { throw 'Redistributable Visual C++ runtime not found' }
+          Copy-Item "$($crt.FullName)/*.dll" $bundle
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive -Path "$bundle/*" -DestinationPath "dist/sony-camera-$env:BUILD_NAME-windows-x64.zip"
+      - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: package-windows
+          path: dist/*.zip
+          if-no-files-found: error
+          retention-days: 7
