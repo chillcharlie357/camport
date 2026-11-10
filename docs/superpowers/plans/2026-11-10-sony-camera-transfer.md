@@ -15,10 +15,10 @@
 - Gallery layout B: large previews; mobile uses two columns and desktop adapts to available width.
 - Type filters show concrete formats present on the camera, such as RAW, JPEG, and MP4, with counts; empty types are omitted.
 - First implementation target is Android + the user's first-generation ZV-E10. App-wide model support is capability-based and only advertised after validation.
-- Preserve original file bytes. Do not silently resize, re-encode, or send photos to a cloud service.
+- Import original file bytes without resizing or re-encoding. Explicit ratings may update metadata in both local and camera originals, with independent write/readback status and unchanged image payload; see the rating-writeback design.
 - Transfer intent is durable. Android may keep a user-started transfer active in a connected-device foreground service. On iOS, use background URLSession only for eligible HTTP(S) transfers; otherwise resume the persisted queue when the app returns to the foreground.
 - Live monitoring and camera remote control follow the photo transfer milestone.
-- Do not add or run automated tests unless the user asks for testing or verification. Use the staged build and device validation steps only after that authorization.
+- Add focused automated checks for scheduler, cache, persistence and UI behavior. Physical camera validation remains separate and must not be inferred from fixture tests. Do not connect a phone or camera until the user requests device validation.
 
 ## Repository map
 
@@ -98,7 +98,7 @@ The initial Android feature should keep the protocol adapter, queue, and gallery
 - [ ] Restart Codex so the REA MCP server receives `REA_JADX_MCP_JAR`, `REA_APKTOOL_COMMAND`, and the Node 24.22.2 executable from the updated configuration.
 - [ ] Call REA's `inspect_android_package` on the Imaging Edge Mobile base APK and require package/version/manifest extraction to complete.
 - [ ] Call REA's `inspect_apktool_client` and require the selected launcher to be `/Users/heleyang/.local/share/rea/android/apktool` with version 3.0.3.
-- [ ] If either provider reports unavailable, stop APK code analysis and report the exact missing provider; do not repeat the unchanged failing call.
+- [ ] If a provider fails, report the exact stage and do not repeat an unchanged failing call. Existing engines may supply clearly labelled static CLI evidence per the current REA recovery guide; this is not MCP readiness success. Current findings are in `docs/research/android-protocol-evidence.md`.
 
 ### Task 2: Inspect the three reference packages without installing them
 
@@ -150,7 +150,7 @@ The initial Android feature should keep the protocol adapter, queue, and gallery
 - [x] In the worktree root, run `flutter create --org com.example --project-name sony_camera --platforms=android,ios,macos,windows .`.
 - [x] Verify the generated Kotlin package is `com.example.sony_camera`; use that exact package path for the Android files in later tasks. Replace the development application ID with a product-owned ID before any store release.
 - [x] Keep `lib/main.dart` limited to `runApp(const CameraTransferApp())`.
-- [x] Define `CameraTransferApp` as a `MaterialApp` with a dark photographic theme, Material 3 components, and a responsive content width.
+- [x] Define `CameraTransferApp` as a `MaterialApp` with the approved silver/white/charcoal v2 theme, Material 3 components, and a responsive content width.
 - [x] Add a startup route that displays the connection screen and no network activity until the user selects Connect.
 - [x] In this shell task, leave camera transport unconfigured on all targets. Implement Android Wi-Fi routing and the ZV-E10 protocol only in Tasks 9–10, after Phase 0 confirms the endpoints; do not guess a camera protocol here. Keep iOS/macOS/Windows explicitly marked “camera connection not yet configured.”
 
@@ -204,12 +204,26 @@ The initial Android feature should keep the protocol adapter, queue, and gallery
 - Create: `lib/data/adapters/fixture_camera_adapter.dart`
 - Modify: `lib/app/camera_transfer_app.dart` (add the explicitly labeled local preview entry point)
 
-- [x] Create a local fixture containing six RAW files, fourteen JPEG files, and four MP4 files with deterministic filenames and thumbnail placeholders.
+- [x] Create a local fixture containing six RAW files, thirteen JPEG files, one PNG file, and four MP4 files with deterministic filenames and thumbnail placeholders.
 - [x] Render a two-column large-preview gallery on mobile and an adaptive wider grid on desktop.
-- [x] Generate the filter chips from formats present in the fixture; show “全部” first and show counts for each format.
+- [x] Generate concrete format choices under `… > 筛选与显示`, shared by gallery and preview; show “全部” first and counts for each format. This supersedes the earlier persistent chip row.
 - [x] Omit formats with no files and map unsupported extensions to a visible “其他” filter.
 - [x] Make the current format filter update the visible list without clearing selected files of other formats unless the user explicitly selects a new subset.
 - [x] Keep the selected file count and import action visible at the bottom of the screen.
+
+### Task 8a: Connect the gallery to bounded thumbnail requests
+
+**Files:**
+- Create: `lib/features/gallery/thumbnail_repository.dart`
+- Create: `lib/features/gallery/camera_thumbnail.dart`
+- Modify: gallery grid and single-file preview
+- Create: focused repository and viewport tests
+
+- [x] Calculate visible grid rows from paint geometry; request only their representative members and at most the next row, rather than every lazily built tile.
+- [x] Limit thumbnail requests to two in flight, deduplicate preview/gallery requests, replace stale queued work and pause prefetch during imports. In-flight transport cancellation is not available in the current port and must not be claimed. Import throttling is tested at repository level; the actual import queue is still pending.
+- [x] Reuse a bounded 32 MiB session memory cache, reject oversized entries and provide explicit retries. Decode for display within 512 × 512 while retaining aspect ratio.
+- [x] Verify scroll jumps, returning to cached rows and opening a single preview do not download originals or request the full library.
+- [ ] Add persistent cache only after stable camera/storage/file-version keys are established. Session cache is not a substitute for the persistent-cache acceptance criterion.
 
 ### Task 9: Implement ZV-E10 connection and file listing adapter
 
@@ -336,4 +350,4 @@ Remote controls and live view are outside this plan. After the photo-transfer re
 - Verify all four platforms' local-network privacy prompts and data destinations before publishing.
 - Use the approved design in `docs/superpowers/specs/2026-11-10-sony-camera-transfer-design.md` as the source of truth for scope.
 - Do not claim universal compatibility, persistent iOS Wi-Fi, or faster transfer without the corresponding recorded device evidence.
-- Do not add or run automated tests unless the user explicitly asks for testing or implementation verification.
+- Run focused automated checks for implemented behavior and record their limits; they do not establish device compatibility or measured camera performance.
