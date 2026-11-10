@@ -1,5 +1,6 @@
 final class CameraPage<T> {
-  const CameraPage({required this.items, this.nextCursor});
+  CameraPage({required List<T> items, this.nextCursor})
+    : items = List<T>.unmodifiable(items);
 
   final List<T> items;
   final String? nextCursor;

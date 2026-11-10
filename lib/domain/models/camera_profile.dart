@@ -1,14 +1,16 @@
 enum ConnectionKind { cameraAccessPoint, sharedWifi, usb }
 
 final class CameraProfile {
-  const CameraProfile({
+  CameraProfile({
     required this.id,
     required this.displayName,
     required this.connectionKind,
     this.model,
     this.firmware,
-    this.connectionConfiguration = const {},
-  });
+    Map<String, String> connectionConfiguration = const {},
+  }) : connectionConfiguration = Map<String, String>.unmodifiable(
+         connectionConfiguration,
+       );
 
   final String id;
   final String displayName;

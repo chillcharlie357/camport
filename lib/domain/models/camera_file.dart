@@ -6,9 +6,12 @@ enum CameraFileFormat {
   other;
 
   static CameraFileFormat fromFileName(String name) {
-    final extension = name
-        .substring(name.lastIndexOf('.') + 1)
-        .toLowerCase();
+    final dotIndex = name.lastIndexOf('.');
+    if (dotIndex == -1 || dotIndex == name.length - 1) {
+      return CameraFileFormat.other;
+    }
+
+    final extension = name.substring(dotIndex + 1).toLowerCase();
 
     return switch (extension) {
       'arw' => CameraFileFormat.raw,
