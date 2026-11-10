@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
+import '../data/adapters/fixture_camera_adapter.dart';
+import '../features/gallery/gallery_screen.dart';
 import 'app_theme.dart';
 
 class CameraTransferApp extends StatelessWidget {
@@ -40,6 +42,14 @@ class _ConnectHome extends StatelessWidget {
       );
   }
 
+  void _openFixtureGallery(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => GalleryScreen(adapter: FixtureCameraAdapter()),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -69,6 +79,7 @@ class _ConnectHome extends StatelessWidget {
                           isAndroid: _isAndroid,
                           platformName: _platformName,
                           onConnect: () => _showConnectStatus(context),
+                          onOpenPreview: () => _openFixtureGallery(context),
                         )
                       else
                         Row(
@@ -80,6 +91,8 @@ class _ConnectHome extends StatelessWidget {
                                 isAndroid: _isAndroid,
                                 platformName: _platformName,
                                 onConnect: () => _showConnectStatus(context),
+                                onOpenPreview: () =>
+                                    _openFixtureGallery(context),
                               ),
                             ),
                             const SizedBox(width: 64),
@@ -178,11 +191,13 @@ class _MainContent extends StatelessWidget {
     required this.isAndroid,
     required this.platformName,
     required this.onConnect,
+    required this.onOpenPreview,
   });
 
   final bool isAndroid;
   final String platformName;
   final VoidCallback onConnect;
+  final VoidCallback onOpenPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -221,6 +236,7 @@ class _MainContent extends StatelessWidget {
           isAndroid: isAndroid,
           platformName: platformName,
           onConnect: onConnect,
+          onOpenPreview: onOpenPreview,
         ),
       ],
     );
@@ -232,11 +248,13 @@ class _CameraCard extends StatelessWidget {
     required this.isAndroid,
     required this.platformName,
     required this.onConnect,
+    required this.onOpenPreview,
   });
 
   final bool isAndroid;
   final String platformName;
   final VoidCallback onConnect;
+  final VoidCallback onOpenPreview;
 
   @override
   Widget build(BuildContext context) {
@@ -291,6 +309,16 @@ class _CameraCard extends StatelessWidget {
                 onPressed: isAndroid ? onConnect : null,
                 icon: const Icon(Icons.wifi_tethering_rounded, size: 19),
                 label: Text(isAndroid ? '连接相机' : '连接功能未配置'),
+              ),
+            ),
+            const SizedBox(height: 10),
+            SizedBox(
+              width: double.infinity,
+              height: 52,
+              child: OutlinedButton.icon(
+                onPressed: onOpenPreview,
+                icon: const Icon(Icons.photo_library_outlined, size: 19),
+                label: const Text('预览本地示例图库'),
               ),
             ),
             if (!isAndroid) ...[

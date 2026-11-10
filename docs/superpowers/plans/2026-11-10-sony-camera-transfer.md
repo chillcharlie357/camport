@@ -202,6 +202,7 @@ The initial Android feature should keep the protocol adapter, queue, and gallery
 - Create: `lib/features/gallery/format_filter_row.dart`
 - Create: `lib/features/gallery/camera_file_tile.dart`
 - Create: `lib/data/adapters/fixture_camera_adapter.dart`
+- Modify: `lib/app/camera_transfer_app.dart` (add the explicitly labeled local preview entry point)
 
 - [ ] Create a local fixture containing six RAW files, fourteen JPEG files, and four MP4 files with deterministic filenames and thumbnail placeholders.
 - [ ] Render a two-column large-preview gallery on mobile and an adaptive wider grid on desktop.
