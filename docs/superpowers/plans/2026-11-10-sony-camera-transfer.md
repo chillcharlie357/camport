@@ -185,14 +185,14 @@ The initial Android feature should keep the protocol adapter, queue, and gallery
 - Create: `lib/domain/ports/camera_credential_store.dart`
 - Create: `lib/domain/ports/import_destination.dart`
 
-- [ ] Define the `CameraAdapter` contract with `Future<CameraProfile> connect(CameraProfile profile)`, `Future<CameraCapabilities> discoverCapabilities()`, `Future<CameraPage<CameraFile>> listFiles({String? cursor})`, `Future<Uint8List?> loadThumbnail(String fileId)`, and `Stream<TransferProgress> downloadOriginal(String fileId, String destinationPath)`.
-- [ ] Inject a `CameraHttpTransport` into each protocol adapter. Use `dart:io HttpClient` over the selected Android process network in the Android MVP; do not let widgets construct HTTP requests.
-- [ ] Import `dart:typed_data` for `Uint8List`; keep thumbnails bounded to preview dimensions and never load original media into this API.
-- [ ] Define `CameraNetwork` with `Future<NetworkConnectionResult> joinCameraNetwork(CameraProfile profile)`, `Future<bool> isCameraReachable(CameraProfile profile)`, and `Future<void> releaseCameraNetwork()`.
-- [ ] Define `CameraCredentialStore` with `Future<void> saveSecret(String profileId, String secret)`, `Future<String?> readSecret(String profileId)`, and `Future<void> deleteSecret(String profileId)`; use Android Keystore and iOS Keychain for saved Wi-Fi credentials.
-- [ ] Define `CameraHttpTransport` with `Future<String> getText(Uri uri)`, `Future<String> postJson(Uri uri, Map<String, Object?> body)`, `Future<Uint8List> getBytes(Uri uri)`, and `Stream<TransferProgress> downloadToFile(Uri uri, String temporaryPath)`.
-- [ ] Define `ImportDestination` with `Future<String> createTemporaryFile(CameraFile file)`, `Future<void> publishCompletedFile(String temporaryPath, CameraFile file)`, and `Future<void> discardTemporaryFile(String temporaryPath)`.
-- [ ] Keep protocol-specific request names, JSON payloads, and socket details out of these interfaces.
+- [x] Define the `CameraAdapter` contract with `Future<CameraProfile> connect(CameraProfile profile)`, `Future<CameraCapabilities> discoverCapabilities()`, `Future<CameraPage<CameraFile>> listFiles({String? cursor})`, `Future<Uint8List?> loadThumbnail(String fileId)`, and `Stream<TransferProgress> downloadOriginal(String fileId, String destinationPath)`.
+- [x] Inject a `CameraHttpTransport` into each protocol adapter. Use `dart:io HttpClient` over the selected Android process network in the Android MVP; do not let widgets construct HTTP requests.
+- [x] Import `dart:typed_data` for `Uint8List`; keep thumbnail images within 512 pixels on the longest edge and never load original media into this API.
+- [x] Define `CameraNetwork` with `Future<NetworkConnectionResult> joinCameraNetwork(CameraProfile profile)`, `Future<bool> isCameraReachable(CameraProfile profile)`, and `Future<void> releaseCameraNetwork()`.
+- [x] Define `CameraCredentialStore` with `Future<void> saveSecret(String profileId, String secret)`, `Future<String?> readSecret(String profileId)`, and `Future<void> deleteSecret(String profileId)`; use Android Keystore and iOS Keychain for saved Wi-Fi credentials.
+- [x] Define `CameraHttpTransport` with `Future<String> getText(Uri uri)`, `Future<String> postJson(Uri uri, Map<String, Object?> body)`, `Future<Uint8List> getBytes(Uri uri)`, and `Stream<TransferProgress> downloadToFile(Uri uri, String temporaryPath)`.
+- [x] Define `ImportDestination` with `Future<String> createTemporaryFile(CameraFile file)`, `Future<void> publishCompletedFile(String temporaryPath, CameraFile file)`, and `Future<void> discardTemporaryFile(String temporaryPath)`.
+- [x] Keep protocol-specific request names, JSON payloads, and socket details out of these interfaces.
 
 ### Task 8: Build the B gallery and direct format filters against a local fixture
 
