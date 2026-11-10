@@ -236,6 +236,32 @@ class _SelectionBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final countLabel = Semantics(
+      liveRegion: true,
+      label: '已选择 $selectedCount 项',
+      child: Text(
+        '已选 $selectedCount 项',
+        style: Theme.of(context).textTheme.titleMedium,
+      ),
+    );
+    final clearButton = TextButton(
+      onPressed: onClear,
+      style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
+      child: const Text('清除'),
+    );
+    final importButton = Tooltip(
+      message: selectedCount == 0 ? '先选择文件' : '示例文件仅供预览；不会传输',
+      child: FilledButton.icon(
+        onPressed: selectedCount == 0 ? null : onImport,
+        icon: const Icon(Icons.file_download_outlined, size: 19),
+        label: const Text('导入'),
+        style: FilledButton.styleFrom(
+          minimumSize: const Size(112, 52),
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+        ),
+      ),
+    );
+
     return Container(
       decoration: const BoxDecoration(
         color: AppTheme.canvas,
@@ -245,42 +271,40 @@ class _SelectionBar extends StatelessWidget {
         top: false,
         child: Padding(
           padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
-          child: Row(
-            children: [
-              Expanded(
-                child: Semantics(
-                  liveRegion: true,
-                  label: '已选择 $selectedCount 项',
-                  child: Text(
-                    '已选 $selectedCount 项',
-                    style: Theme.of(context).textTheme.titleMedium,
-                  ),
-                ),
-              ),
-              if (selectedCount > 0) ...[
-                TextButton(
-                  onPressed: onClear,
-                  style: TextButton.styleFrom(minimumSize: const Size(48, 48)),
-                  child: const Text('清除'),
-                ),
-                const SizedBox(width: 8),
-              ],
-              Tooltip(
-                message: selectedCount == 0 ? '先选择文件' : '示例文件仅供预览；不会传输',
-                child: SizedBox(
-                  height: 52,
-                  child: FilledButton.icon(
-                    onPressed: selectedCount == 0 ? null : onImport,
-                    icon: const Icon(Icons.file_download_outlined, size: 19),
-                    label: const Text('导入'),
-                    style: FilledButton.styleFrom(
-                      minimumSize: const Size(112, 52),
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
-                ),
-              ),
-            ],
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final largeText =
+                  MediaQuery.textScalerOf(context).scale(16) >= 20;
+              final useStackedLayout = constraints.maxWidth < 440 || largeText;
+
+              if (useStackedLayout) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Align(alignment: Alignment.centerLeft, child: countLabel),
+                    if (selectedCount > 0)
+                      Align(
+                        alignment: Alignment.centerRight,
+                        child: clearButton,
+                      ),
+                    const SizedBox(height: 8),
+                    SizedBox(width: double.infinity, child: importButton),
+                  ],
+                );
+              }
+
+              return Row(
+                children: [
+                  Expanded(child: countLabel),
+                  if (selectedCount > 0) ...[
+                    clearButton,
+                    const SizedBox(width: 8),
+                  ],
+                  importButton,
+                ],
+              );
+            },
           ),
         ),
       ),
