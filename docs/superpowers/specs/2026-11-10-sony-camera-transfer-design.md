@@ -1,7 +1,9 @@
 # Sony Camera Photo Transfer — Product and Technical Design
 
-**Status:** Proposed for user review  
-**Date:** 2026-11-10  
+**Status:** Scope approved; implementation in progress  
+**Date:** 2026-11-10
+
+**Acceptance source of truth:** [Requirements and acceptance criteria](../../requirements/sony-camera-requirements-and-acceptance.md). Latest decisions: same-name RAW/JPG/PNG merging, unified local ratings, filters under More, and preview-first loading with no automatic original-file prefetch.  
 **Platforms:** iOS, Android, macOS, Windows  
 **Primary device for validation:** Sony ZV-E10 (first generation)
 
@@ -65,7 +67,9 @@ The product addresses the user's reported problems with Imaging Edge Mobile and 
 
 - Use the selected B layout: large two-column previews on mobile, with a responsive multi-column grid on desktop.
 - Show filename, file type, and video duration where available. Load thumbnails before full-resolution previews; cache them locally and request originals only when the user opens or imports a file.
-- Place the format chips near the top: “全部”, then the concrete formats found on the card, such as “RAW 6”, “JPEG 14”, “MP4 4”. Keep the row horizontally scrollable on narrow screens.
+- Place file-format filters and the same-name merge switch inside the top-right More → 筛选与显示 panel. Offer actual formats on the card, including RAW, JPEG, PNG, and MP4 where present. Keep only a brief active-condition summary on the page.
+- Merge same-basename RAW with JPG/JPEG/PNG when enabled. A shared 0–5 local photo rating survives split/merged views. Apply physical file-format filtering before grouping, preserving selected file IDs.
+- Never load originals to populate the gallery. Fetch metadata first, then visible thumbnails plus at most the next row. Use cached thumbnails first; original-file loading requires an explicit user action. Wireless preview latency and request/byte budgets are P0 acceptance items.
 - Selecting a format filters the current camera listing without triggering a fresh full listing request when the data is already cached.
 - Selection count and an “导入” action remain visible while scrolling.
 
@@ -174,6 +178,6 @@ Can share UI and logic across Android, iOS, macOS, and Windows while retaining a
 
 Offers the most direct platform-native implementation and customization, but duplicates gallery and transfer behavior across separate clients and slows feature parity. It is justified if the protocol later requires substantially different mobile implementations.
 
-## 12. Decision requested
+## 12. Decisions recorded
 
-The user approved Flutter as the preferred architecture. Please review this complete product scope and confirm whether Phase 1 should remain limited to photo browsing/import before remote controls and live monitoring are added later. The user's physical ZV-E10 is the planned compatibility target after static protocol review.
+The user approved Flutter, the photo browsing/import first-release scope, and the v2 silver visual design. The approved visual baseline is saved in commit `6c4db3b`. The user subsequently requested simple same-name RAW/JPG/PNG merging and unified ratings, with filters in the top-right overflow menu. Preview loading speed is the primary performance concern, especially over Wi-Fi; browsing must not download the entire camera library. The linked requirements document defines measurable acceptance and current evidence limits.
