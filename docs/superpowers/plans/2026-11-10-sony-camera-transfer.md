@@ -204,12 +204,12 @@ The initial Android feature should keep the protocol adapter, queue, and gallery
 - Create: `lib/data/adapters/fixture_camera_adapter.dart`
 - Modify: `lib/app/camera_transfer_app.dart` (add the explicitly labeled local preview entry point)
 
-- [ ] Create a local fixture containing six RAW files, fourteen JPEG files, and four MP4 files with deterministic filenames and thumbnail placeholders.
-- [ ] Render a two-column large-preview gallery on mobile and an adaptive wider grid on desktop.
-- [ ] Generate the filter chips from formats present in the fixture; show “全部” first and show counts for each format.
-- [ ] Omit formats with no files and map unsupported extensions to a visible “其他” filter.
-- [ ] Make the current format filter update the visible list without clearing selected files of other formats unless the user explicitly selects a new subset.
-- [ ] Keep the selected file count and import action visible at the bottom of the screen.
+- [x] Create a local fixture containing six RAW files, fourteen JPEG files, and four MP4 files with deterministic filenames and thumbnail placeholders.
+- [x] Render a two-column large-preview gallery on mobile and an adaptive wider grid on desktop.
+- [x] Generate the filter chips from formats present in the fixture; show “全部” first and show counts for each format.
+- [x] Omit formats with no files and map unsupported extensions to a visible “其他” filter.
+- [x] Make the current format filter update the visible list without clearing selected files of other formats unless the user explicitly selects a new subset.
+- [x] Keep the selected file count and import action visible at the bottom of the screen.
 
 ### Task 9: Implement ZV-E10 connection and file listing adapter
 
