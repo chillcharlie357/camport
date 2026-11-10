@@ -4,15 +4,19 @@ import '../../app/app_theme.dart';
 import '../../domain/models/gallery_entry.dart';
 import 'gallery_controller.dart';
 import 'format_filter_row.dart';
+import 'camera_thumbnail.dart';
+import 'thumbnail_repository.dart';
 
 class PhotoPreviewScreen extends StatefulWidget {
   const PhotoPreviewScreen({
     required this.entry,
     required this.controller,
+    required this.thumbnails,
     super.key,
   });
   final GalleryEntry entry;
   final GalleryController controller;
+  final ThumbnailRepository thumbnails;
 
   @override
   State<PhotoPreviewScreen> createState() => _PhotoPreviewScreenState();
@@ -20,6 +24,16 @@ class PhotoPreviewScreen extends StatefulWidget {
 
 class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
   late String _memberId = widget.entry.representative.id;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        widget.thumbnails.loadForPreview(widget.entry.representative);
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,34 +63,13 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
                     children: [
                       AspectRatio(
                         aspectRatio: 3 / 2,
-                        child: ColoredBox(
-                          color: AppTheme.raisedSurface,
-                          child: Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    widget.entry.isPhotoEntry
-                                        ? Icons.landscape_outlined
-                                        : Icons.movie_outlined,
-                                    size: 40,
-                                    color: AppTheme.mutedText,
-                                  ),
-                                  const SizedBox(height: 12),
-                                  Text(
-                                    widget.entry.isPhotoEntry
-                                        ? '暂无照片预览'
-                                        : '暂无视频预览',
-                                    textAlign: TextAlign.center,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
+                        child: CameraThumbnail(
+                          file: file,
+                          repository: widget.thumbnails,
                         ),
                       ),
+                      const SizedBox(height: 8),
+                      const Text('缩略图预览'),
                       const SizedBox(height: 20),
                       Text(
                         file.name,
@@ -109,8 +102,10 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
                                       : AppTheme.line,
                                 ),
                               ),
-                              onPressed: () =>
-                                  setState(() => _memberId = member.id),
+                              onPressed: () {
+                                setState(() => _memberId = member.id);
+                                widget.thumbnails.loadForPreview(member);
+                              },
                               child: Text(
                                 member.name,
                                 overflow: TextOverflow.ellipsis,

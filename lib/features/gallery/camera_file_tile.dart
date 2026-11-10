@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_theme.dart';
 import '../../domain/models/gallery_entry.dart';
+import 'camera_thumbnail.dart';
+import 'thumbnail_repository.dart';
 
 class CameraFileTile extends StatelessWidget {
   const CameraFileTile({
@@ -10,6 +12,7 @@ class CameraFileTile extends StatelessWidget {
     required this.rating,
     required this.onTap,
     required this.onToggleSelection,
+    required this.thumbnails,
     super.key,
   });
 
@@ -18,6 +21,7 @@ class CameraFileTile extends StatelessWidget {
   final int rating;
   final VoidCallback onTap;
   final VoidCallback onToggleSelection;
+  final ThumbnailRepository thumbnails;
 
   @override
   Widget build(BuildContext context) {
@@ -53,17 +57,10 @@ class CameraFileTile extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    const ColoredBox(color: AppTheme.raisedSurface),
-                    Center(
-                      child: ExcludeSemantics(
-                        child: Icon(
-                          entry.isPhotoEntry
-                              ? Icons.landscape_outlined
-                              : Icons.play_circle_outline,
-                          size: 32,
-                          color: AppTheme.mutedText,
-                        ),
-                      ),
+                    CameraThumbnail(
+                      file: file,
+                      repository: thumbnails,
+                      compact: true,
                     ),
                     Positioned(
                       right: 0,

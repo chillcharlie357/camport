@@ -8,3 +8,7 @@
 /coverage/
 *.iml
 .idea/
+.omx/
+.playwright-cli/
+.superpowers/
+output/

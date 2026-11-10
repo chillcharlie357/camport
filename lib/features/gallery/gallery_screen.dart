@@ -1,12 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 
 import '../../app/app_theme.dart';
 import '../../data/local/gallery_preferences.dart';
 import '../../domain/ports/camera_adapter.dart';
+import '../../domain/models/gallery_entry.dart';
 import 'camera_file_tile.dart';
 import 'format_filter_row.dart';
 import 'gallery_controller.dart';
 import 'photo_preview_screen.dart';
+import 'thumbnail_repository.dart';
 
 class GalleryScreen extends StatefulWidget {
   const GalleryScreen({required this.adapter, this.preferences, super.key});
@@ -20,6 +23,12 @@ class GalleryScreen extends StatefulWidget {
 
 class _GalleryScreenState extends State<GalleryScreen> {
   late final GalleryController _controller;
+  late final ThumbnailRepository _thumbnails;
+  final _scroll = ScrollController();
+  final _gridKey = GlobalKey();
+  bool _viewportScheduled = false;
+  bool _previewOpen = false;
+  List<GalleryEntry> _renderedEntries = const [];
 
   @override
   void initState() {
@@ -28,12 +37,86 @@ class _GalleryScreenState extends State<GalleryScreen> {
       adapter: widget.adapter,
       preferences: widget.preferences,
     );
+    _thumbnails = ThumbnailRepository(
+      adapter: widget.adapter,
+      // No persistent reuse until camera/storage identity and file versions are
+      // available. Separate gallery sessions cannot share an ambiguous key.
+      namespace: 'gallery:${DateTime.now().microsecondsSinceEpoch}',
+    );
+    _controller.addListener(_scheduleViewport);
+    _scroll.addListener(_scheduleViewport);
   }
 
   @override
   void dispose() {
+    _scroll.dispose();
+    _thumbnails.dispose();
+    _controller.removeListener(_scheduleViewport);
     _controller.dispose();
     super.dispose();
+  }
+
+  void _scheduleViewport() {
+    if (_viewportScheduled || !mounted) return;
+    _viewportScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _viewportScheduled = false;
+      if (!mounted || _previewOpen) return;
+      final render = _gridKey.currentContext?.findRenderObject();
+      if (_controller.isLoading ||
+          render is! RenderSliverGrid ||
+          !render.attached ||
+          render.geometry?.visible != true) {
+        _thumbnails.setViewport(visible: const []);
+        return;
+      }
+      final entries = _renderedEntries;
+      final layout = render.gridDelegate.getLayout(render.constraints);
+      // Use paint extent, not cache extent: Flutter builds offscreen tiles too.
+      final start = layout
+          .getMinChildIndexForScrollOffset(render.constraints.scrollOffset)
+          .clamp(0, entries.length);
+      final end =
+          (layout.getMaxChildIndexForScrollOffset(
+                    render.constraints.scrollOffset +
+                        render.geometry!.paintExtent,
+                  ) +
+                  1)
+              .clamp(start, entries.length);
+      final columns =
+          (render.gridDelegate as SliverGridDelegateWithFixedCrossAxisCount)
+              .crossAxisCount;
+      final prefetchEnd = (end + columns).clamp(end, entries.length);
+      _thumbnails.setViewport(
+        visible: entries
+            .sublist(start, end)
+            .map((e) => e.representative)
+            .toList(),
+        prefetch: entries
+            .sublist(end, prefetchEnd)
+            .map((e) => e.representative)
+            .toList(),
+      );
+    });
+  }
+
+  Future<void> _openPreview(GalleryEntry entry) async {
+    _previewOpen = true;
+    _thumbnails.setViewport(visible: const []);
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => PhotoPreviewScreen(
+          entry: entry,
+          controller: _controller,
+          thumbnails: _thumbnails,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    _previewOpen = false;
+    _scheduleViewport();
+    // A post-frame callback alone doesn't schedule a frame after pop settles.
+    WidgetsBinding.instance.ensureVisualUpdate();
   }
 
   void _showImportNotice() {
@@ -52,6 +135,10 @@ class _GalleryScreenState extends State<GalleryScreen> {
     return AnimatedBuilder(
       animation: _controller,
       builder: (context, _) {
+        // Filtering/grouping runs when gallery data changes, not on every pixel
+        // of scrolling. The viewport uses the same snapshot as the grid.
+        _renderedEntries = _controller.visibleEntries;
+        _scheduleViewport();
         return Scaffold(
           appBar: AppBar(
             title: const Text('图库'),
@@ -64,6 +151,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
             child: LayoutBuilder(
               builder: (context, constraints) {
                 return CustomScrollView(
+                  controller: _scroll,
                   slivers: [
                     SliverToBoxAdapter(child: _PreviewNotice()),
                     SliverToBoxAdapter(
@@ -79,7 +167,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                               style: Theme.of(context).textTheme.titleLarge,
                             ),
                             Text(
-                              '${_controller.visibleEntries.length} 项 · ${_controller.visibleFiles.length} 个文件',
+                              '${_renderedEntries.length} 项 · ${_controller.visibleFiles.length} 个文件',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             Text(
@@ -153,11 +241,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
         .toInt();
     final tileWidth = (width - 40 - (columns - 1) * gridGap) / columns;
     final tileHeight = tileWidth * .75 + 142 * scale;
-    final entries = _controller.visibleEntries;
+    final entries = _renderedEntries;
 
     return SliverPadding(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       sliver: SliverGrid(
+        key: _gridKey,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columns,
           mainAxisExtent: tileHeight,
@@ -170,12 +259,8 @@ class _GalleryScreenState extends State<GalleryScreen> {
             entry: entry,
             selection: _controller.selectionFor(entry),
             rating: _controller.ratingFor(entry),
-            onTap: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) =>
-                    PhotoPreviewScreen(entry: entry, controller: _controller),
-              ),
-            ),
+            thumbnails: _thumbnails,
+            onTap: () => _openPreview(entry),
             onToggleSelection: () => _controller.toggleEntrySelection(entry),
           );
         }, childCount: entries.length),
