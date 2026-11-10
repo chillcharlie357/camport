@@ -52,7 +52,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
             actions: [
               IconButton(
                 tooltip: '重新载入示例文件',
-                onPressed: _controller.loadFiles,
+                onPressed: _controller.isLoading ? null : _controller.loadFiles,
                 icon: const Icon(Icons.refresh_rounded),
               ),
             ],
@@ -265,15 +265,18 @@ class _SelectionBar extends StatelessWidget {
                 ),
                 const SizedBox(width: 8),
               ],
-              SizedBox(
-                height: 52,
-                child: FilledButton.icon(
-                  onPressed: onImport,
-                  icon: const Icon(Icons.file_download_outlined, size: 19),
-                  label: const Text('导入'),
-                  style: FilledButton.styleFrom(
-                    minimumSize: const Size(112, 52),
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
+              Tooltip(
+                message: selectedCount == 0 ? '先选择文件' : '示例文件仅供预览；不会传输',
+                child: SizedBox(
+                  height: 52,
+                  child: FilledButton.icon(
+                    onPressed: selectedCount == 0 ? null : onImport,
+                    icon: const Icon(Icons.file_download_outlined, size: 19),
+                    label: const Text('导入'),
+                    style: FilledButton.styleFrom(
+                      minimumSize: const Size(112, 52),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                    ),
                   ),
                 ),
               ),

@@ -17,7 +17,7 @@ class CameraFileTile extends StatelessWidget {
   final bool selected;
   final VoidCallback onTap;
 
-  String get _formatLabel => switch (CameraFileFormat.fromFileName(file.name)) {
+  String get _formatLabel => switch (file.format) {
     CameraFileFormat.raw => 'RAW',
     CameraFileFormat.jpeg => 'JPEG',
     CameraFileFormat.mp4 => 'MP4',
@@ -27,7 +27,7 @@ class CameraFileTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final format = CameraFileFormat.fromFileName(file.name);
+    final format = file.format;
     final theme = Theme.of(context);
 
     return Semantics(

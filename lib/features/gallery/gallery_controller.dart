@@ -30,18 +30,19 @@ final class GalleryController extends ChangeNotifier {
   CameraFileFormat? _activeFormat;
   bool _isLoading = true;
   Object? _loadError;
+  int _requestGeneration = 0;
+  bool _isDisposed = false;
 
   List<CameraFile> get visibleFiles => List<CameraFile>.unmodifiable(
     _files.where((file) {
-      return _activeFormat == null || _formatOf(file) == _activeFormat;
+      return _activeFormat == null || file.format == _activeFormat;
     }),
   );
 
   List<GalleryFormatFilter> get filters {
     final counts = <CameraFileFormat, int>{};
     for (final file in _files) {
-      final format = _formatOf(file);
-      counts.update(format, (count) => count + 1, ifAbsent: () => 1);
+      counts.update(file.format, (count) => count + 1, ifAbsent: () => 1);
     }
 
     const order = [
@@ -66,17 +67,24 @@ final class GalleryController extends ChangeNotifier {
   bool isSelected(CameraFile file) => _selectedIds.contains(file.id);
 
   Future<void> loadFiles() async {
+    if (_isDisposed) return;
+
+    final requestGeneration = ++_requestGeneration;
     _isLoading = true;
     _loadError = null;
     notifyListeners();
     try {
       final page = await _adapter.listFiles();
+      if (!_isCurrentRequest(requestGeneration)) return;
       _files = page.items;
     } catch (error) {
+      if (!_isCurrentRequest(requestGeneration)) return;
       _loadError = error;
     } finally {
-      _isLoading = false;
-      notifyListeners();
+      if (_isCurrentRequest(requestGeneration)) {
+        _isLoading = false;
+        notifyListeners();
+      }
     }
   }
 
@@ -97,6 +105,13 @@ final class GalleryController extends ChangeNotifier {
     notifyListeners();
   }
 
-  static CameraFileFormat _formatOf(CameraFile file) =>
-      CameraFileFormat.fromFileName(file.name);
+  bool _isCurrentRequest(int generation) =>
+      !_isDisposed && generation == _requestGeneration;
+
+  @override
+  void dispose() {
+    _isDisposed = true;
+    _requestGeneration++;
+    super.dispose();
+  }
 }
