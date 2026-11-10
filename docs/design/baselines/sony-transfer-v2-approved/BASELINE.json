@@ -1,0 +1,31 @@
+{
+  "status": "user-approved",
+  "approved_on": "2026-11-10",
+  "source": "User: UI设计没问题，保存基线",
+  "palette": "silver v2",
+  "sha256": {
+    "README.md": "f4039d13dd13b63ba98611ad0af7aeff7928352843a4697a66c383a1f698fd48",
+    "VISUAL-DIRECTION.md": "c20023232460c32e0c54ce0c807291774895773f60fc316f5e9505b45448a4d8",
+    "assets/coast.jpg": "49cedc8780a248497257a701e1f5da88067817409bfda4cd058e62c131888c26",
+    "assets/dunes.jpg": "f3706beb864580c482105d427d71dd81dfbe8c738f1bf148c01611294fcd88ef",
+    "assets/fonts/IBMPlexSans-OFL.txt": "7e6b2818edbd8f6a01ae80641cc8f16a51080d08fb4e532be3a0b6f74adb07da",
+    "assets/fonts/IBMPlexSans-ui.woff2": "61cdbd99b9d48055603c3209edfeb0476df74390044842749355d22aff8b4fbe",
+    "assets/fonts/NotoSansSC-OFL.txt": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+    "assets/fonts/NotoSansSC-ui.woff2": "3fd6074711e0f6779468d7bcfa4df29ed4d68fa2a78de5945c3dabcccd10b703",
+    "assets/forest.jpg": "4d65e4264744e7dcf066d0d093709fffc3882db17099ef570b60b1265fb0b013",
+    "assets/lake.jpg": "81b383cdefb284dbe65083f62c7dcc4f37ae9c766fd7d336a03beb084fa5642e",
+    "assets/mountain.jpg": "c3b22d4cde913791e1cba6df97e9cb786855ba5cacac0cace0ab613e0231f5fd",
+    "assets/road.jpg": "694604a6ead37bca1985c92918b291f294450711af69c1e6e56a2a481bc9f029",
+    "exports/v2/01-connection-gallery.png": "2cc6d0d95ecc6ddc1d6a1fcd24d5a6c44ca12105b8565191d2ceeb635cdaab4d",
+    "exports/v2/02-preview-import.png": "7e6fb90f8a39ba66a3861dc71a931f484163390f6a80788f11ece5fac82c94f1",
+    "exports/v2/03-recovery-settings.png": "cfe09462048552c27f95f958396d58e11edeef5c645a120142b4d514d330a2d4",
+    "exports/v2/04-desktop.png": "da3d5eb594a27da1a1cf135f83b05475bc9964a83131fa9d66f727f0a78f8ace",
+    "exports/v2/05-design-system.png": "2e9ee3aff36b84900ba8889b84a69b4189ef09d4c059d8d819b184ecbf7b962c",
+    "exports/v2/complete-design.png": "d639c53819f497a7594f6c1159bec0bebdd1ffaa6a1e6e653f5e317fc1221900",
+    "exports/v2/sony-camera-design-v2.pdf": "7f66d187ce4264da1facc8e16c4736f42f041c5e09488e26379fb3e68e66215b",
+    "exports/v2/sony-camera-design-v2.zip": "05724f81520977903111fa8f73ee42aec66ebb5196f4cae40b54376e57a1e8be",
+    "index.html": "77ca89d0fc9d1dfd13ae1ba30f243c3d6c66f71a9da5511bed69e0f19ac64b04",
+    "print.html": "9f94c0e74c6c87415733e9ecd52d3fe299ce27a1594f1f3c8622eec12dc9f595",
+    "theme-v2.css": "0a54977ae63adbf6fc83171fb0dd211f45785be15487bc13c23992efd7875576"
+  }
+}
