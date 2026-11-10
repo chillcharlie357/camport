@@ -37,7 +37,7 @@ The product addresses the user's reported problems with Imaging Edge Mobile and 
 3. Browse camera files with lazy thumbnail loading and a fast placeholder-first list.
 4. Filter directly by file format present on the camera, with per-format counts. Initial examples: RAW (for example ARW), JPEG, MP4, and any other formats proven for the connected model. Do not show an empty format filter.
 5. Open a large preview and inspect basic file metadata.
-6. Select one or more files and import their original bytes to the device. Do not silently downsize, transcode, or upload to a cloud service.
+6. Select one or more files and import their original bytes to the device. Do not silently downsize, transcode, or upload to a cloud service. Explicit photo ratings may update rating metadata in local and camera original files, while preserving image data.
 7. Maintain a durable transfer queue with per-file progress, cancel/retry, collision handling, and recovery after transient connection loss or app restart.
 8. Store camera profiles and last-used import locations locally.
 
@@ -68,7 +68,7 @@ The product addresses the user's reported problems with Imaging Edge Mobile and 
 - Use the selected B layout: large two-column previews on mobile, with a responsive multi-column grid on desktop.
 - Show filename, file type, and video duration where available. Load thumbnails before full-resolution previews; cache them locally and request originals only when the user opens or imports a file.
 - Place file-format filters and the same-name merge switch inside the top-right More → 筛选与显示 panel. Offer actual formats on the card, including RAW, JPEG, PNG, and MP4 where present. Keep only a brief active-condition summary on the page.
-- Merge same-basename RAW with JPG/JPEG/PNG when enabled. A shared 0–5 local photo rating survives split/merged views. Apply physical file-format filtering before grouping, preserving selected file IDs.
+- Merge same-basename RAW with JPG/JPEG/PNG when enabled. A shared 0–5 desired photo rating survives split/merged views. The user permits writing rating metadata into both local originals and camera originals; track each target separately and verify writes before reporting success. Apply physical file-format filtering before grouping, preserving selected file IDs.
 - Never load originals to populate the gallery. Fetch metadata first, then visible thumbnails plus at most the next row. Use cached thumbnails first; original-file loading requires an explicit user action. Wireless preview latency and request/byte budgets are P0 acceptance items.
 - Selecting a format filters the current camera listing without triggering a fresh full listing request when the data is already cached.
 - Selection count and an “导入” action remain visible while scrolling.
