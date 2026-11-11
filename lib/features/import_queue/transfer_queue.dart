@@ -576,7 +576,27 @@ final class TransferQueue extends ChangeNotifier {
   }
 
   Future<TransferJob> _reconcile(TransferJob job) async {
-    if (job.state == TransferState.completed) return job;
+    if (job.state == TransferState.completed) {
+      final destination = File(job.destinationPath);
+      // A completed queue record is not evidence that the published file still
+      // exists or contains the bytes verified when it was imported.
+      try {
+        if (job.checksum != null &&
+            await FileSystemEntity.type(destination.path, followLinks: false) ==
+                FileSystemEntityType.file &&
+            await destination.length() == job.totalBytes &&
+            await _hash(destination) == job.checksum) {
+          return job;
+        }
+      } on FileSystemException {
+        // A removed volume or revoked permission affects this entry, not the
+        // entire queue. Keep the original path and let the user retry.
+      }
+      return job.copyWith(
+        state: TransferState.failed,
+        lastError: '已导入文件缺失、不可读取或内容已变化；原目标保留，请检查后重新导入',
+      );
+    }
     final partialLength = await _partialLength(job);
     final partialExists =
         job.temporaryPath != null && await File(job.temporaryPath!).exists();
