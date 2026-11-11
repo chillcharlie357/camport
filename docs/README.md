@@ -1,5 +1,13 @@
 # CamPort 文档
 
+## GitHub Wiki 页面
+
+- [Home](wiki/Home.md)：项目定位、首版能力与现状。
+- [功能与限制](wiki/Features-and-Limitations.md)：已实现功能、安全边界与未完成项。
+- [路线图](wiki/Roadmap.md)：已完成、进行中与后续版本。
+- [相机连接与协议](wiki/Camera-Connection-and-Protocol.md)：SSDP、PTP/IP、缩略图与原片下载。
+- [兼容与验证状态](wiki/Compatibility-and-Validation.md)：平台与机型矩阵、验证边界。
+
 ## 需求与验收
 
 - [完整需求与验收标准](requirements/sony-camera-requirements-and-acceptance.md)：功能、无线预览专项、性能、安全隐私、可靠性、后台恢复、四平台兼容、易用性与发布门槛。需求编号用于实现和测试追踪。
