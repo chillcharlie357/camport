@@ -53,7 +53,7 @@ class PtpIpTransport {
     required String host,
     required int port,
     required Uint8List guid,
-    String friendlyName = 'Sony Camera Import',
+    String friendlyName = 'CamPort',
   }) async {
     if (guid.length != 16) {
       throw ArgumentError('GUID must have 16 wire-order bytes');

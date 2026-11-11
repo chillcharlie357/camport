@@ -73,7 +73,7 @@ class _CameraTransferAppState extends State<CameraTransferApp> {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sony 相机导入',
+      title: 'CamPort',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       home: _runtime != null

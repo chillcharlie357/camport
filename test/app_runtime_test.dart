@@ -4,12 +4,12 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter/widgets.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/app/app_runtime.dart';
-import 'package:sony_camera/domain/models/camera_file.dart';
-import 'package:sony_camera/domain/models/transfer_job.dart';
-import 'package:sony_camera/domain/models/transfer_progress.dart';
-import 'package:sony_camera/domain/ports/camera_adapter.dart';
-import 'package:sony_camera/platform/transfer_background.dart';
+import 'package:camport/app/app_runtime.dart';
+import 'package:camport/domain/models/camera_file.dart';
+import 'package:camport/domain/models/transfer_job.dart';
+import 'package:camport/domain/models/transfer_progress.dart';
+import 'package:camport/domain/ports/camera_adapter.dart';
+import 'package:camport/platform/transfer_background.dart';
 
 class RuntimeBackground extends TransferBackground {
   RuntimeBackground()

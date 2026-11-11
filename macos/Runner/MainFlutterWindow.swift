@@ -36,7 +36,7 @@ private final class TransferBackgroundBridge {
 
   init(messenger: FlutterBinaryMessenger, window: NSWindow) {
     channel = FlutterMethodChannel(
-      name: "sony_camera/transfer_background", binaryMessenger: messenger)
+      name: "camport/transfer_background", binaryMessenger: messenger)
     channel.setMethodCallHandler { [weak self] call, result in
       guard let self = self, !self.closed else {
         result(FlutterError(code: "bridge_closed", message: "The transfer bridge has closed", details: nil))
@@ -137,7 +137,7 @@ private final class TransferBackgroundBridge {
     }
     networkTimeout = timeout
     DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
-    current.start(queue: DispatchQueue(label: "sony_camera.transfer_network"))
+    current.start(queue: DispatchQueue(label: "camport.transfer_network"))
   }
 
   private func networkState(_ ready: Bool) -> [String: Any] {

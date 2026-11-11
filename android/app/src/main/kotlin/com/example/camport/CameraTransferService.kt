@@ -1,4 +1,4 @@
-package com.example.sony_camera
+package com.example.camport
 
 import android.app.Notification
 import android.app.NotificationChannel
@@ -65,7 +65,7 @@ class CameraTransferService : Service() {
     @Suppress("DEPRECATION")
     private fun acquireLocks() {
         val wake = requireNotNull(getSystemService(PowerManager::class.java))
-            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "sony_camera:transfer")
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "camport:transfer")
         wakeLock = wake
         wake.setReferenceCounted(false)
         // Bounded independently of the service's watchdog, even on error.
@@ -74,7 +74,7 @@ class CameraTransferService : Service() {
         // Screen-off execution depends on the foreground service, partial wake
         // lock and retained Wi-Fi Network, not on legacy high-performance behavior.
         val wifi = requireNotNull(applicationContext.getSystemService(WifiManager::class.java))
-            .createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "sony_camera:transfer")
+            .createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "camport:transfer")
         wifiLock = wifi
         wifi.setReferenceCounted(false)
         wifi.acquire()
@@ -196,8 +196,8 @@ class CameraTransferService : Service() {
     }
 
     companion object {
-        const val ACTION_START = "com.example.sony_camera.TRANSFER_START"
-        const val ACTION_PAUSE = "com.example.sony_camera.TRANSFER_PAUSE"
+        const val ACTION_START = "com.example.camport.TRANSFER_START"
+        const val ACTION_PAUSE = "com.example.camport.TRANSFER_PAUSE"
         const val NOTIFICATION_CHANNEL = "camera_transfer"
         private const val NOTIFICATION_ID = 4317
         // App safety budget, NOT an Android connectedDevice time limit.

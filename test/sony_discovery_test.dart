@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/data/sony/sony_discovery.dart';
+import 'package:camport/data/sony/sony_discovery.dart';
 
 void main() {
   test(

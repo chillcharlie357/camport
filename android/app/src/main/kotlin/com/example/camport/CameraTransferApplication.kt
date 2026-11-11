@@ -1,4 +1,4 @@
-package com.example.sony_camera
+package com.example.camport
 
 import android.app.Application
 import io.flutter.embedding.engine.FlutterEngine
@@ -39,6 +39,6 @@ class CameraTransferApplication : Application() {
     }
 
     companion object {
-        private const val ENGINE_ID = "sony_camera.main"
+        private const val ENGINE_ID = "camport.main"
     }
 }

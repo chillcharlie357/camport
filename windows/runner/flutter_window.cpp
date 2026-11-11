@@ -151,7 +151,7 @@ bool FlutterWindow::OnCreate() {
   transfer_channel_ =
       std::make_unique<flutter::MethodChannel<EncodableValue>>(
           flutter_controller_->engine()->messenger(),
-          "sony_camera/transfer_background",
+          "camport/transfer_background",
           &flutter::StandardMethodCodec::GetInstance());
   transfer_channel_->SetMethodCallHandler(
       [this](const auto& call, auto result) {

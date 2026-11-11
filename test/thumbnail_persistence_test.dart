@@ -1,8 +1,8 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/data/local/thumbnail_disk_cache.dart';
-import 'package:sony_camera/features/gallery/thumbnail_repository.dart';
+import 'package:camport/data/local/thumbnail_disk_cache.dart';
+import 'package:camport/features/gallery/thumbnail_repository.dart';
 
 import 'thumbnail_repository_test.dart' show ControlledAdapter, photo, data;
 

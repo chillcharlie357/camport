@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/data/adapters/fixture_camera_adapter.dart';
-import 'package:sony_camera/data/local/gallery_preferences.dart';
-import 'package:sony_camera/domain/models/camera_file.dart';
-import 'package:sony_camera/domain/models/camera_page.dart';
-import 'package:sony_camera/domain/ports/camera_adapter.dart';
-import 'package:sony_camera/features/gallery/gallery_controller.dart';
+import 'package:camport/data/adapters/fixture_camera_adapter.dart';
+import 'package:camport/data/local/gallery_preferences.dart';
+import 'package:camport/domain/models/camera_file.dart';
+import 'package:camport/domain/models/camera_page.dart';
+import 'package:camport/domain/ports/camera_adapter.dart';
+import 'package:camport/features/gallery/gallery_controller.dart';
 
 class MemoryStore implements GalleryPreferenceStore {
   String? value;

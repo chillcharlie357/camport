@@ -725,7 +725,7 @@ final class TransferQueue extends ChangeNotifier {
           .toString();
 
   static String _reservation(TransferJob job) =>
-      'sony-camera-reservation-v1\n${job.id}\n${job.checksum}\n';
+      'camport-reservation-v1\n${job.id}\n${job.checksum}\n';
 
   static void _validateStoredPaths(TransferJob job) {
     final destination = File(job.destinationPath);

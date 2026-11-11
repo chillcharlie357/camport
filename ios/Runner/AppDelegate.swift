@@ -43,7 +43,7 @@ private final class TransferBackgroundBridge: NSObject, FlutterPlugin {
 
   private init(messenger: FlutterBinaryMessenger) {
     channel = FlutterMethodChannel(
-      name: "sony_camera/transfer_background", binaryMessenger: messenger)
+      name: "camport/transfer_background", binaryMessenger: messenger)
     super.init()
     let center = NotificationCenter.default
     // Observe both scene and app notifications; deduplicate the shared transition.
@@ -210,7 +210,7 @@ private final class TransferBackgroundBridge: NSObject, FlutterPlugin {
     }
     networkTimeout = timeout
     DispatchQueue.main.asyncAfter(deadline: .now() + 5, execute: timeout)
-    current.start(queue: DispatchQueue(label: "sony_camera.transfer_wifi"))
+    current.start(queue: DispatchQueue(label: "camport.transfer_wifi"))
   }
 
   private func networkState(_ ready: Bool) -> [String: Any] {

@@ -3,7 +3,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/domain/models/transfer_progress.dart';
+import 'package:camport/domain/models/transfer_progress.dart';
 
 import 'gallery_screen_test.dart' show openGallery;
 import 'gallery_test.dart' show ListingAdapter, file;

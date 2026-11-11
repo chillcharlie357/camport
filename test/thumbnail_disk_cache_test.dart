@@ -4,7 +4,7 @@ import 'dart:typed_data';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/data/local/thumbnail_disk_cache.dart';
+import 'package:camport/data/local/thumbnail_disk_cache.dart';
 
 String hash(String key) => sha256.convert(utf8.encode(key)).toString();
 Uint8List bytes(int value, [int length = 2000]) =>

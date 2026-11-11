@@ -16,7 +16,7 @@ enum BackgroundTransferEvent {
 class TransferBackground {
   TransferBackground({MethodChannel? channel})
     : _channel =
-          channel ?? const MethodChannel('sony_camera/transfer_background') {
+          channel ?? const MethodChannel('camport/transfer_background') {
     _channel.setMethodCallHandler(_handleCall);
   }
 
@@ -107,7 +107,7 @@ class TransferBackground {
     } on MissingPluginException {
       throw UnsupportedError(
         'Background transfer protection is not available on this platform '
-        '(sony_camera/transfer_background.$method).',
+        '(camport/transfer_background.$method).',
       );
     }
   }

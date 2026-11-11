@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/app/app_theme.dart';
-import 'package:sony_camera/data/adapters/fixture_camera_adapter.dart';
-import 'package:sony_camera/data/local/gallery_preferences.dart';
-import 'package:sony_camera/features/gallery/gallery_screen.dart';
-import 'package:sony_camera/domain/ports/camera_adapter.dart';
+import 'package:camport/app/app_theme.dart';
+import 'package:camport/data/adapters/fixture_camera_adapter.dart';
+import 'package:camport/data/local/gallery_preferences.dart';
+import 'package:camport/features/gallery/gallery_screen.dart';
+import 'package:camport/domain/ports/camera_adapter.dart';
 
 import 'gallery_test.dart' show MemoryStore, ListingAdapter;
 

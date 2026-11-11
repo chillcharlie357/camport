@@ -2,7 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/platform/transfer_background.dart';
+import 'package:camport/platform/transfer_background.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -37,7 +37,7 @@ void main() {
   });
 
   test('uses the shared native channel by default', () async {
-    const native = MethodChannel('sony_camera/transfer_background');
+    const native = MethodChannel('camport/transfer_background');
     messenger.setMockMethodCallHandler(native, (call) async {
       expect(call.method, 'stop');
       return null;

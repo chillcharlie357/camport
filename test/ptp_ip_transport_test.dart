@@ -3,8 +3,8 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/data/protocol/ptp_codec.dart';
-import 'package:sony_camera/data/protocol/ptp_ip_transport.dart';
+import 'package:camport/data/protocol/ptp_codec.dart';
+import 'package:camport/data/protocol/ptp_ip_transport.dart';
 
 Uint8List u16(int n) =>
     (ByteData(2)..setUint16(0, n, Endian.little)).buffer.asUint8List();

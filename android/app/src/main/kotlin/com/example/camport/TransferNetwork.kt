@@ -1,4 +1,4 @@
-package com.example.sony_camera
+package com.example.camport
 
 import android.content.Context
 import android.net.ConnectivityManager
@@ -117,7 +117,7 @@ internal class TransferNetwork(context: Context, private val onLost: () -> Unit)
         if (multicastLock?.isHeld == true) return
         // SSDP 239.255.255.250:1900 responses may otherwise be filtered by Wi-Fi.
         // Owned by the connected session, never a permanent Application lock.
-        val lock = wifiManager.createMulticastLock("sony_camera:ssdp")
+        val lock = wifiManager.createMulticastLock("camport:ssdp")
         multicastLock = lock
         lock.setReferenceCounted(false)
         lock.acquire()

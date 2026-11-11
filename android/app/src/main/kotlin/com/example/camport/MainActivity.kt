@@ -1,4 +1,4 @@
-package com.example.sony_camera
+package com.example.camport
 
 import android.content.Context
 import android.os.Bundle

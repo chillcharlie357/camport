@@ -71,7 +71,7 @@ def tag_commit(repo, tag, gh):
 def publish(directory, version, sha, repo, pr_number, gh=gh_command):
     if not re.fullmatch(r"\d+\.\d+\.\d+", version) or not re.fullmatch(r"[0-9a-f]{40}", sha):
         raise ValueError("Invalid version or commit SHA")
-    package_names = {f"sony-camera-{version}-{platform}" for platform in
+    package_names = {f"camport-{version}-{platform}" for platform in
                      ("android.apk", "macos.zip", "windows-x64.zip")}
     generated = {"SHA256SUMS.txt", "BUILD-INFO.json"}
     found = {p.name for p in directory.iterdir()}

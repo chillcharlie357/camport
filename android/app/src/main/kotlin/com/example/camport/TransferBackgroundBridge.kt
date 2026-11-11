@@ -1,4 +1,4 @@
-package com.example.sony_camera
+package com.example.camport
 
 import android.Manifest
 import android.app.NotificationManager
@@ -438,7 +438,7 @@ class TransferBackgroundBridge(private val app: CameraTransferApplication) : Met
     }
 
     companion object {
-        const val CHANNEL = "sony_camera/transfer_background"
+        const val CHANNEL = "camport/transfer_background"
         private const val NOTIFICATION_REQUEST = 4317
         // String keeps compileSdk 36 compatible; do not request on target < 37.
         private const val ACCESS_LOCAL_NETWORK = "android.permission.ACCESS_LOCAL_NETWORK"

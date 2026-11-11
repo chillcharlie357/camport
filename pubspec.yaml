@@ -1,5 +1,5 @@
-name: sony_camera
-description: "A fast, local photo transfer app for Sony cameras."
+name: camport
+description: "CamPort — fast local photo transfer for Sony cameras."
 publish_to: 'none'
 version: 0.1.0+1
 

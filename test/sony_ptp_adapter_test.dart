@@ -4,10 +4,10 @@ import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:image/image.dart' as img;
-import 'package:sony_camera/data/protocol/ptp_codec.dart';
-import 'package:sony_camera/data/protocol/ptp_ip_transport.dart';
-import 'package:sony_camera/data/sony/sony_ptp_adapter.dart';
-import 'package:sony_camera/domain/models/camera_profile.dart';
+import 'package:camport/data/protocol/ptp_codec.dart';
+import 'package:camport/data/protocol/ptp_ip_transport.dart';
+import 'package:camport/data/sony/sony_ptp_adapter.dart';
+import 'package:camport/domain/models/camera_profile.dart';
 
 import 'ptp_ip_transport_test.dart' as tcp show Camera, packet, start, data;
 
@@ -133,7 +133,7 @@ class CameraTransport extends PtpIpTransport {
     required String host,
     required int port,
     required Uint8List guid,
-    String friendlyName = 'Sony Camera Import',
+    String friendlyName = 'CamPort',
   }) async {
     expect(host, '192.168.122.1');
     expect(port, 15740);
@@ -807,7 +807,7 @@ class LocalTestTransport extends PtpIpTransport {
     required String host,
     required int port,
     required Uint8List guid,
-    String friendlyName = 'Sony Camera Import',
+    String friendlyName = 'CamPort',
   }) => super.connect(
     host: '127.0.0.1',
     port: this.port,

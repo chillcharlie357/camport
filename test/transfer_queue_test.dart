@@ -4,11 +4,11 @@ import 'dart:io';
 
 import 'package:crypto/crypto.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/domain/models/camera_file.dart';
-import 'package:sony_camera/domain/models/transfer_job.dart';
-import 'package:sony_camera/domain/models/transfer_progress.dart';
-import 'package:sony_camera/domain/ports/camera_adapter.dart';
-import 'package:sony_camera/features/import_queue/transfer_queue.dart';
+import 'package:camport/domain/models/camera_file.dart';
+import 'package:camport/domain/models/transfer_job.dart';
+import 'package:camport/domain/models/transfer_progress.dart';
+import 'package:camport/domain/ports/camera_adapter.dart';
+import 'package:camport/features/import_queue/transfer_queue.dart';
 
 CameraFile source({String id = 'one', String name = 'DSC.ARW', int size = 6}) =>
     CameraFile(
@@ -258,9 +258,9 @@ void main() {
         cameraId: 'camera',
         files: [
           source(),
-          source(id: 'escape', name: r'..\..\CON:<>.ARW'),
-          source(id: 'reserved', name: 'CON.ARW'),
-          source(id: 'up', name: '../../outside.ARW'),
+          source(id: 'escape', name: 'CON:<>.ARW'),
+          source(id: 'reserved', name: 'AUX.ARW'),
+          source(id: 'illegal', name: 'name:with?illegal*.ARW'),
         ],
         destination: destination,
       );
@@ -631,7 +631,7 @@ void main() {
       await stateFile.writeAsString(jsonEncode(json));
       final originalPath = q.jobs.single.destinationPath;
       await File(originalPath).writeAsString(
-        'sony-camera-reservation-v1\n${q.jobs.single.id}\n$checksum\n',
+        'camport-reservation-v1\n${q.jobs.single.id}\n$checksum\n',
       );
       final reopened = queue();
       await reopened.ready;
@@ -666,7 +666,7 @@ void main() {
       final originalPath = q.jobs.single.destinationPath;
       final length = utf8
           .encode(
-            'sony-camera-reservation-v1\n${q.jobs.single.id}\n$checksum\n',
+            'camport-reservation-v1\n${q.jobs.single.id}\n$checksum\n',
           )
           .length;
       final existing = List<int>.filled(length, 255);
