@@ -7,6 +7,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 
 import '../../domain/models/camera_file.dart';
+import '../../domain/models/gallery_entry.dart' show isPhoto, photoIdentity;
 import '../../domain/models/transfer_job.dart';
 import '../../domain/models/transfer_progress.dart';
 import '../../domain/ports/camera_adapter.dart';
@@ -89,6 +90,16 @@ final class TransferQueue extends ChangeNotifier {
       if (files.any((f) => f.byteLength < 0)) {
         throw ArgumentError('Original file length must be nonnegative');
       }
+      // The queue must never save a job that it would reject on restart.
+      if (files.any(
+        (f) =>
+            f.name.isEmpty ||
+            f.name.length > 1024 ||
+            f.name.contains(RegExp(r'[/\\\x00]')) ||
+            (f.directory?.length ?? 0) > 2048,
+      )) {
+        throw ArgumentError('Invalid camera source name or directory');
+      }
       final additions = <TransferJob>[];
       final occupied = _jobs
           .map((j) => j.destinationPath.toLowerCase())
@@ -120,6 +131,11 @@ final class TransferQueue extends ChangeNotifier {
             fileName: _basename(path),
             sourceVersion: file.thumbnailKey,
             sourceCapturedAt: file.capturedAt,
+            sourceName: file.name,
+            sourceDirectory: file.directory,
+            photoIdentity: isPhoto(file)
+                ? photoIdentity(file, cameraId: cameraId)
+                : null,
             destinationPath: path,
             temporaryPath: '${destination.absolute.path}/.camera-$id.part',
             state: TransferState.queued,
@@ -128,6 +144,8 @@ final class TransferQueue extends ChangeNotifier {
             attemptCount: 0,
           ),
         );
+        // Apply the same schema rules used on restart before publishing state.
+        TransferJob.fromJson(additions.last.toJson());
       }
       if (additions.isEmpty) return;
       // Publish the new jobs only after durable save succeeds.
@@ -147,6 +165,8 @@ final class TransferQueue extends ChangeNotifier {
       if (job.cameraId != cameraId ||
           job.cameraFileId != file.id ||
           job.sourceVersion != file.thumbnailKey ||
+          (job.sourceName != null && job.sourceName != file.name) ||
+          (job.sourceName != null && job.sourceDirectory != file.directory) ||
           job.sourceCapturedAt != file.capturedAt ||
           job.totalBytes != file.byteLength ||
           File(job.destinationPath).parent.absolute.path !=

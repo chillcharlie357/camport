@@ -167,6 +167,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
           builder: (_) => GalleryScreen(
             adapter: runtime.galleryAdapter(profile.id),
             cameraName: profile.displayName,
+            cameraId: profile.id,
             diskCache: runtime.thumbnailNamespace == null
                 ? null
                 : runtime.cache,
@@ -178,6 +179,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
             isConnected: () =>
                 runtime.connected && runtime.profile?.id == profile.id,
             connectionEpoch: () => runtime.connectionEpoch,
+            importJobs: () => runtime.queue.jobs,
           ),
         ),
       ),

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_theme.dart';
 import '../../domain/models/gallery_entry.dart';
 import '../../domain/models/camera_file.dart';
+import '../../domain/models/transfer_job.dart';
 import 'gallery_controller.dart';
 import 'format_filter_row.dart';
 import 'camera_thumbnail.dart';
@@ -15,6 +16,8 @@ class PhotoPreviewScreen extends StatefulWidget {
     required this.thumbnails,
     this.isDemo = true,
     this.onImport,
+    this.importJobs,
+    this.importActivity,
     super.key,
   });
   final GalleryEntry entry;
@@ -22,6 +25,8 @@ class PhotoPreviewScreen extends StatefulWidget {
   final ThumbnailRepository thumbnails;
   final bool isDemo;
   final Future<void> Function(List<CameraFile>)? onImport;
+  final List<TransferJob> Function()? importJobs;
+  final Listenable? importActivity;
 
   @override
   State<PhotoPreviewScreen> createState() => _PhotoPreviewScreenState();
@@ -40,10 +45,24 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
     });
   }
 
+  bool _hasCompletedImport(CameraFile member) =>
+      (widget.importJobs?.call() ?? const <TransferJob>[]).any(
+        (job) =>
+            job.state == TransferState.completed &&
+            job.sourceName == member.name &&
+            job.sourceDirectory == member.directory &&
+            job.cameraFileId == member.id &&
+            job.sourceVersion == member.thumbnailKey &&
+            job.photoIdentity == widget.entry.identity,
+      );
+
   @override
   Widget build(BuildContext context) {
     return AnimatedBuilder(
-      animation: widget.controller,
+      animation: Listenable.merge([
+        widget.controller,
+        if (widget.importActivity != null) widget.importActivity!,
+      ]),
       builder: (context, _) {
         final members = widget.controller.membersFor(widget.entry);
         final file = members.firstWhere(
@@ -170,7 +189,23 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
                         ),
                         const Text('同名 RAW/JPG/PNG 共用评分。'),
                         const SizedBox(height: 8),
-                        const Text('评分已暂存；本机原文件和相机原文件尚未写入。'),
+                        Text(
+                          widget.controller.persistenceError != null
+                              ? '期望评分保存失败，请重试本机设置保存。'
+                              : widget.controller.hasPendingRatingSave
+                              ? '正在保存期望评分；以下原文件尚未写入。'
+                              : '期望评分已保存在本机设置；以下原文件尚未写入。',
+                        ),
+                        for (final member in members) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            '${member.name}：本机 ${widget.controller.writeIntentFor(widget.entry, member) == null
+                                ? '尚未请求'
+                                : _hasCompletedImport(member)
+                                ? '已导入，评分待写入'
+                                : '待导入后写入'} · 相机 ${widget.controller.writeIntentFor(widget.entry, member) == null ? '尚未请求' : '待确认评分接口'}',
+                          ),
+                        ],
                       ],
                       if (widget.controller.persistenceError != null)
                         TextButton(

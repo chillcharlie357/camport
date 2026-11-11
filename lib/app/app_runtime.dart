@@ -237,6 +237,13 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
       error = e;
     } finally {
       discovering = false;
+      if (!connected && !queue.isRunning && !connecting) {
+        try {
+          await background.releaseNetwork();
+        } catch (failure) {
+          error ??= failure;
+        }
+      }
       _notify();
     }
   }
@@ -262,7 +269,23 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     }
     if (connected && profile?.id == target.id) return Future.value(profile!);
     final generation = ++_generation;
-    final operation = _connect(target, generation, forTransfer: forTransfer);
+    final operation = _connect(target, generation, forTransfer: forTransfer)
+        .catchError((Object failure, StackTrace stack) async {
+          // A failed explicit connection should not retain a process-wide
+          // camera Wi-Fi binding. The queue owns its network lease while it
+          // is running, and cancellation has its own cleanup path.
+          if (!_closed &&
+              generation == _generation &&
+              !queue.isRunning &&
+              !connected) {
+            try {
+              await background.releaseNetwork();
+            } catch (_) {
+              // Preserve the original connection error for the UI.
+            }
+          }
+          Error.throwWithStackTrace(failure, stack);
+        });
     _connecting = operation;
     _notify();
     return operation.whenComplete(() {
@@ -298,16 +321,29 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     _adapter = null;
     final adapter = SonyPtpCameraAdapter(guid: _guid);
     _opening = adapter;
+    CameraProfile? previousProfile;
+    final previousLastId = _lastProfileId;
     try {
       final result = await adapter.connect(target);
       if (_closed || generation != _generation) throw StateError('连接已取消');
-      _adapter = adapter;
-      _opening = null;
+      previousProfile = _profiles[result.id];
       _profiles[result.id] = result;
       _lastProfileId = result.id;
-      connectionEpoch++;
-      await _persist();
+      try {
+        await _persist();
+      } catch (_) {
+        if (previousProfile == null) {
+          _profiles.remove(result.id);
+        } else {
+          _profiles[result.id] = previousProfile;
+        }
+        _lastProfileId = previousLastId;
+        rethrow;
+      }
       if (_closed || generation != _generation) throw StateError('连接已取消');
+      _adapter = adapter;
+      _opening = null;
+      connectionEpoch++;
       _notify();
       return result;
     } catch (e) {

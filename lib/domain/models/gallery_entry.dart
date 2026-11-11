@@ -9,7 +9,7 @@ bool isPhoto(CameraFile file) => switch (file.format) {
 
 /// The simple photo rule: same directory + case-insensitive basename, stripping
 /// only the final extension. No camera metadata or capture time is required.
-String photoIdentity(CameraFile file) {
+String photoIdentity(CameraFile file, {String? cameraId}) {
   final path = file.name.replaceAll('\\', '/');
   final slash = path.lastIndexOf('/');
   final name = path.substring(slash + 1);
@@ -19,7 +19,9 @@ String photoIdentity(CameraFile file) {
     return jsonEncode([
       'photo',
       file.directory == null
-          ? path.substring(0, slash + 1)
+          ? cameraId == null
+                ? path.substring(0, slash + 1)
+                : jsonEncode([cameraId, path.substring(0, slash + 1)])
           : '${file.directory}/${path.substring(0, slash + 1)}',
       stem.toLowerCase(),
     ]);
@@ -27,8 +29,12 @@ String photoIdentity(CameraFile file) {
   return jsonEncode(['file', file.id]);
 }
 
-Map<String, String> photoIdentities(List<CameraFile> files) =>
-    Map.unmodifiable({for (final file in files) file.id: photoIdentity(file)});
+Map<String, String> photoIdentities(
+  List<CameraFile> files, {
+  String? cameraId,
+}) => Map.unmodifiable({
+  for (final file in files) file.id: photoIdentity(file, cameraId: cameraId),
+});
 
 String cameraFormatLabel(CameraFileFormat format) => switch (format) {
   CameraFileFormat.raw => 'RAW',

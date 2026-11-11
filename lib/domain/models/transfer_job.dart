@@ -1,3 +1,8 @@
+import 'dart:convert';
+
+import 'camera_file.dart';
+import 'gallery_entry.dart' as gallery;
+
 enum TransferState {
   queued,
   connecting,
@@ -24,6 +29,9 @@ final class TransferJob {
     this.fileName = '',
     this.sourceVersion,
     this.sourceCapturedAt,
+    this.sourceName,
+    this.sourceDirectory,
+    this.photoIdentity,
     this.checksum,
     this.temporaryPath,
     this.commitPending = false,
@@ -41,6 +49,14 @@ final class TransferJob {
   final String fileName;
   final String? sourceVersion;
   final DateTime? sourceCapturedAt;
+
+  /// Names and directory are the camera's original metadata, never the
+  /// collision-adjusted local destination filename.
+  final String? sourceName;
+  final String? sourceDirectory;
+
+  /// Stable same-name photo group used to associate future local metadata work.
+  final String? photoIdentity;
   final String? checksum;
   final String? temporaryPath;
 
@@ -71,6 +87,9 @@ final class TransferJob {
     attemptCount: attemptCount ?? this.attemptCount,
     sourceVersion: sourceVersion,
     sourceCapturedAt: sourceCapturedAt,
+    sourceName: sourceName,
+    sourceDirectory: sourceDirectory,
+    photoIdentity: photoIdentity,
     checksum: clearChecksum ? null : checksum ?? this.checksum,
     temporaryPath: temporaryPath ?? this.temporaryPath,
     commitPending: commitPending ?? this.commitPending,
@@ -90,6 +109,9 @@ final class TransferJob {
     'lastError': lastError,
     'sourceVersion': sourceVersion,
     'sourceCapturedAt': sourceCapturedAt?.toUtc().toIso8601String(),
+    'sourceName': sourceName,
+    'sourceDirectory': sourceDirectory,
+    'photoIdentity': photoIdentity,
     'checksum': checksum,
     'temporaryPath': temporaryPath,
     'commitPending': commitPending,
@@ -108,6 +130,9 @@ final class TransferJob {
       cameraId: json['cameraId'] as String? ?? '',
       fileName: json['fileName'] as String? ?? '',
       sourceVersion: json['sourceVersion'] as String?,
+      sourceName: json['sourceName'] as String?,
+      sourceDirectory: json['sourceDirectory'] as String?,
+      photoIdentity: json['photoIdentity'] as String?,
       sourceCapturedAt: json['sourceCapturedAt'] == null
           ? null
           : DateTime.parse(json['sourceCapturedAt'] as String),
@@ -115,10 +140,55 @@ final class TransferJob {
       temporaryPath: json['temporaryPath'] as String?,
       commitPending: json['commitPending'] as bool? ?? false,
     );
+    if (result.photoIdentity != null) {
+      if (result.photoIdentity!.length > 4096) {
+        throw const FormatException('Invalid photo identity');
+      }
+      // Older queue snapshots have no sourceName. They remain importable, but
+      // cannot be trusted for a future metadata write to a physical original.
+      if (result.sourceName != null) {
+        final source = CameraFile(
+          id: result.cameraFileId,
+          name: result.sourceName!,
+          extension: '',
+          format: CameraFileFormat.fromFileName(result.sourceName!),
+          byteLength: result.totalBytes,
+          thumbnailKey: result.sourceVersion,
+          directory: result.sourceDirectory,
+        );
+        if (!gallery.isPhoto(source) ||
+            gallery.photoIdentity(source, cameraId: result.cameraId) !=
+                result.photoIdentity) {
+          throw const FormatException(
+            'Photo identity differs from camera source',
+          );
+        }
+      } else {
+        try {
+          final parts = jsonDecode(result.photoIdentity!);
+          if (parts is! List ||
+              parts.length != 3 ||
+              parts[0] != 'photo' ||
+              parts[1] is! String ||
+              parts[2] is! String ||
+              (parts[2] as String).isEmpty) {
+            throw const FormatException('Invalid legacy photo identity');
+          }
+        } on FormatException {
+          throw const FormatException('Invalid legacy photo identity');
+        }
+      }
+    }
     if (result.id.isEmpty ||
         result.totalBytes < 0 ||
         result.bytesTransferred < 0 ||
         result.attemptCount < 0 ||
+        (result.sourceName != null &&
+            (result.sourceName!.isEmpty ||
+                result.sourceName!.length > 1024 ||
+                result.sourceName!.contains(RegExp(r'[/\\\x00]')))) ||
+        (result.sourceDirectory != null &&
+            result.sourceDirectory!.length > 2048) ||
         (result.checksum != null &&
             !RegExp(r'^[a-f0-9]{64}$').hasMatch(result.checksum!))) {
       throw const FormatException('Invalid transfer job');

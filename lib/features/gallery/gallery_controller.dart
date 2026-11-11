@@ -23,13 +23,20 @@ final class GalleryFormatFilter {
 }
 
 final class GalleryController extends ChangeNotifier {
-  GalleryController({required this._adapter, GalleryPreferences? preferences})
-    : preferences = preferences ?? GalleryPreferences.shared {
+  GalleryController({
+    required this._adapter,
+    this.cameraId,
+    GalleryPreferences? preferences,
+  }) : preferences = preferences ?? GalleryPreferences.shared {
     this.preferences.addListener(_preferencesChanged);
+    this.preferences.ready.then((_) {
+      if (!_isDisposed) _registerPhotoMembers(_files);
+    });
     loadFiles();
   }
 
   final GalleryPreferences preferences;
+  final String? cameraId;
   Map<String, String> _identities = const {};
 
   void _preferencesChanged() {
@@ -39,6 +46,7 @@ final class GalleryController extends ChangeNotifier {
   bool get mergeRawJpeg => preferences.mergeRawJpeg;
   void setMergeRawJpeg(bool value) => preferences.setMergeRawJpeg(value);
   Object? get persistenceError => preferences.error;
+  bool get hasPendingRatingSave => preferences.hasPendingSave;
 
   List<GalleryEntry> get visibleEntries => galleryEntries(
     files: visibleFiles,
@@ -50,8 +58,17 @@ final class GalleryController extends ChangeNotifier {
       entry.isPhotoEntry ? preferences.rating(entry.identity) : 0;
 
   void setRating(GalleryEntry entry, int rating) {
-    if (entry.isPhotoEntry) preferences.setRating(entry.identity, rating);
+    if (entry.isPhotoEntry) {
+      preferences.setRatingForMembers(
+        entry.identity,
+        rating,
+        membersFor(entry),
+      );
+    }
   }
+
+  RatingWriteIntent? writeIntentFor(GalleryEntry entry, CameraFile member) =>
+      preferences.writeIntent(entry.identity, member);
 
   /// true = all, false = none, null = a partially selected merged entry.
   bool? selectionFor(GalleryEntry entry) {
@@ -160,7 +177,8 @@ final class GalleryController extends ChangeNotifier {
       if (!_isCurrentRequest(requestGeneration)) return;
       _files = List.unmodifiable(page.items);
       _nextCursor = page.nextCursor;
-      _identities = photoIdentities(_files);
+      _identities = photoIdentities(_files, cameraId: cameraId);
+      _registerPhotoMembers(page.items);
       _reconcileSelection();
     } catch (error) {
       if (!_isCurrentRequest(requestGeneration)) return;
@@ -171,6 +189,16 @@ final class GalleryController extends ChangeNotifier {
         notifyListeners();
       }
     }
+  }
+
+  void _registerPhotoMembers(Iterable<CameraFile> files) {
+    final groups = <String, List<CameraFile>>{};
+    for (final file in files) {
+      if (!isPhoto(file)) continue;
+      final identity = _identities[file.id];
+      if (identity != null) groups.putIfAbsent(identity, () => []).add(file);
+    }
+    preferences.registerPhotoGroups(groups);
   }
 
   void _reconcileSelection() {
@@ -208,7 +236,8 @@ final class GalleryController extends ChangeNotifier {
       };
       _files = List.unmodifiable(files.values);
       _nextCursor = page.nextCursor;
-      _identities = photoIdentities(_files);
+      _identities = photoIdentities(_files, cameraId: cameraId);
+      _registerPhotoMembers(page.items);
       _reconcileSelection();
     } catch (error) {
       if (_isCurrentRequest(generation)) _loadMoreError = error;
