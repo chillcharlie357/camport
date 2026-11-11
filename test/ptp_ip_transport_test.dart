@@ -563,7 +563,9 @@ void main() {
     await transport.command(0x1001);
     await serving;
     await camera.command!.send(response(1));
-    await Future<void>.delayed(const Duration(milliseconds: 30));
+    for (var i = 0; i < 200 && transport.connected; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+    }
     expect(transport.connected, isFalse);
     await expectLater(transport.command(0x1001), throwsStateError);
   });
