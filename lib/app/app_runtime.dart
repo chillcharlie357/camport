@@ -8,8 +8,7 @@ import 'package:flutter/widgets.dart';
 import 'package:path_provider/path_provider.dart';
 
 import '../data/local/thumbnail_disk_cache.dart';
-import '../data/sony/sony_discovery.dart';
-import '../data/sony/sony_ptp_adapter.dart';
+import '../data/adapters/camera_session_factory.dart';
 import '../domain/models/camera_capabilities.dart';
 import '../domain/models/camera_file.dart';
 import '../domain/models/camera_page.dart';
@@ -17,6 +16,7 @@ import '../domain/models/camera_profile.dart';
 import '../domain/models/transfer_job.dart';
 import '../domain/models/transfer_progress.dart';
 import '../domain/ports/camera_adapter.dart';
+import '../domain/ports/camera_session.dart';
 import '../domain/ports/versioned_thumbnail_source.dart';
 import '../features/import_queue/transfer_queue.dart';
 import '../platform/transfer_background.dart';
@@ -28,10 +28,12 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     required this.cacheDirectory,
     required this.importDirectory,
     TransferBackground? background,
-    SonyCameraDiscovery? discovery,
+    CameraSessionRegistry? sessionRegistry,
     Future<CameraAdapter> Function(TransferJob)? resolveAdapter,
-  }) : background = background ?? TransferBackground(),
-       discovery = discovery ?? SonyCameraDiscovery() {
+  }) : sessionRegistry =
+           sessionRegistry ??
+           CameraSessionRegistry([const SonyPtpSessionFactory()]),
+       background = background ?? TransferBackground() {
     cache = ThumbnailDiskCache(
       directory: Directory('${cacheDirectory.path}/thumbnails-v1'),
     );
@@ -73,7 +75,7 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
   final Directory cacheDirectory;
   final Directory importDirectory;
   final TransferBackground background;
-  final SonyCameraDiscovery discovery;
+  final CameraSessionRegistry sessionRegistry;
   late final ThumbnailDiskCache cache;
   late final TransferQueue queue;
   late final Future<void> ready;
@@ -81,8 +83,8 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
   final _profiles = <String, CameraProfile>{};
   final _proxies = <String, _SessionAdapter>{};
   Uint8List _guid = Uint8List(16);
-  SonyPtpCameraAdapter? _adapter;
-  SonyPtpCameraAdapter? _opening;
+  CameraSession? _adapter;
+  CameraSession? _opening;
   Future<CameraProfile>? _connecting;
   Future<void> _writes = Future.value();
   String? _lastProfileId;
@@ -95,7 +97,7 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
   bool discovering = false;
   Object? error;
   String? networkMessage;
-  List<SonyCameraEndpoint> endpoints = const [];
+  List<CameraProfile> endpoints = const [];
   DateTime _lastProgress = DateTime.fromMillisecondsSinceEpoch(0);
 
   bool get connecting => _connecting != null;
@@ -128,18 +130,17 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
       for (final raw in data['profiles'] as List<dynamic>) {
         final item = raw as Map<String, dynamic>;
         final config = Map<String, String>.from(item['config'] as Map);
-        SonyCameraEndpoint.manual(
-          config['host']!,
-          port: int.parse(config['port'] ?? '15740'),
-        );
         final p = CameraProfile(
           id: item['id'] as String,
           displayName: item['name'] as String,
           model: item['model'] as String?,
           firmware: item['firmware'] as String?,
-          connectionKind: ConnectionKind.cameraAccessPoint,
+          connectionKind: ConnectionKind.values.byName(
+            item['connectionKind'] as String? ?? 'cameraAccessPoint',
+          ),
           connectionConfiguration: config,
         );
+        sessionRegistry.validateSavedProfile(p);
         _profiles[p.id] = p;
       }
     } else {
@@ -169,6 +170,7 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
               'name': p.displayName,
               'model': p.model,
               'firmware': p.firmware,
+              'connectionKind': p.connectionKind.name,
               'config': p.connectionConfiguration,
             },
           )
@@ -229,7 +231,7 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
       if (network['connected'] != true) {
         throw StateError(networkMessage ?? '请先连接相机 Wi-Fi');
       }
-      endpoints = await discovery.discover();
+      endpoints = await sessionRegistry.discover();
       if (endpoints.isEmpty) {
         error = StateError('没有发现相机；请确认智能手机连接模式，或手动输入相机 IP');
       }
@@ -319,12 +321,16 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     await _adapter?.close();
     if (_closed || generation != _generation) throw StateError('连接已取消');
     _adapter = null;
-    final adapter = SonyPtpCameraAdapter(guid: _guid);
+    final adapter = sessionRegistry.create(target, _guid);
     _opening = adapter;
     CameraProfile? previousProfile;
     final previousLastId = _lastProfileId;
     try {
       final result = await adapter.connect(target);
+      if (sessionRegistry.adapterId(result) !=
+          sessionRegistry.adapterId(target)) {
+        throw StateError('相机适配器标识发生变化，请重新连接');
+      }
       if (_closed || generation != _generation) throw StateError('连接已取消');
       previousProfile = _profiles[result.id];
       _profiles[result.id] = result;
@@ -358,7 +364,7 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<SonyPtpCameraAdapter> _ensureCamera(
+  Future<CameraSession> _ensureCamera(
     String cameraId, {
     bool forTransfer = false,
   }) async {

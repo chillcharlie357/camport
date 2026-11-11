@@ -7,7 +7,6 @@ import '../../data/local/thumbnail_disk_cache.dart';
 import '../../domain/models/camera_file.dart';
 import '../../domain/ports/camera_adapter.dart';
 import '../../domain/models/gallery_entry.dart';
-import '../../domain/models/transfer_job.dart';
 import 'camera_file_tile.dart';
 import 'format_filter_row.dart';
 import 'gallery_controller.dart';
@@ -28,7 +27,6 @@ class GalleryScreen extends StatefulWidget {
     this.isTransferring,
     this.isConnected,
     this.connectionEpoch,
-    this.importJobs,
     super.key,
   });
 
@@ -44,7 +42,6 @@ class GalleryScreen extends StatefulWidget {
   final bool Function()? isTransferring;
   final bool Function()? isConnected;
   final int Function()? connectionEpoch;
-  final List<TransferJob> Function()? importJobs;
 
   @override
   State<GalleryScreen> createState() => _GalleryScreenState();
@@ -241,8 +238,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
           thumbnails: _thumbnails,
           isDemo: widget.cameraName == null,
           onImport: widget.onImport == null ? null : _importFiles,
-          importJobs: widget.importJobs,
-          importActivity: widget.activity,
         ),
       ),
     );
@@ -439,7 +434,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
           return CameraFileTile(
             entry: entry,
             selection: _controller.selectionFor(entry),
-            rating: _controller.ratingFor(entry),
             thumbnails: _thumbnails,
             onTap: () => _openPreview(entry),
             onToggleSelection: () => _controller.toggleEntrySelection(entry),

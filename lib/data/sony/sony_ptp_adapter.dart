@@ -13,7 +13,7 @@ import '../../domain/models/camera_file.dart';
 import '../../domain/models/camera_page.dart';
 import '../../domain/models/camera_profile.dart';
 import '../../domain/models/transfer_progress.dart';
-import '../../domain/ports/camera_adapter.dart';
+import '../../domain/ports/camera_session.dart';
 import '../protocol/ptp_codec.dart';
 import '../protocol/ptp_ip_transport.dart';
 
@@ -25,7 +25,7 @@ const _pcRemote =
 /// Read-only Sony contents/PTP adapter. No capture, delete, device-log or
 /// short-video/transcoding operations are sent. Original destinations must be
 /// caller-owned .part files; final rename/hash verification belongs to the queue.
-class SonyPtpCameraAdapter implements CameraAdapter {
+class SonyPtpCameraAdapter implements CameraSession {
   SonyPtpCameraAdapter({
     required Uint8List guid,
     PtpIpTransport? transport,
@@ -57,10 +57,13 @@ class SonyPtpCameraAdapter implements CameraAdapter {
   List<_ObjectRef>? _handles;
   _Download? _active;
 
+  @override
   bool get connected => _ready && _transport.connected;
+  @override
   CameraProfile? get profile => _profile;
 
   /// Null means identity could not be verified; never reuse a persistent cache.
+  @override
   String? get cacheNamespace => _cacheNamespace;
   Set<int> get reportedOperations => Set<int>.unmodifiable(_operations);
 
@@ -176,6 +179,7 @@ class SonyPtpCameraAdapter implements CameraAdapter {
         connectionKind: profile.connectionKind,
         connectionConfiguration: {
           ...config,
+          'adapter': 'sony-ptp',
           'host': host,
           'port': '$port',
           if (contentsEnabled) 'mediaServer': 'true',
@@ -283,6 +287,7 @@ class SonyPtpCameraAdapter implements CameraAdapter {
     );
   }
 
+  @override
   Future<CameraFile> describeFile(String fileId) async {
     _requireConnected();
     final generation = _generation;
@@ -297,6 +302,7 @@ class SonyPtpCameraAdapter implements CameraAdapter {
 
   /// Queue-provided source identity. Checked against fresh metadata before any
   /// part-file write, including resumed and already-complete temporary files.
+  @override
   void expectFile(String fileId, {String? sourceVersion, int? byteLength}) {
     _ref(fileId);
     if (byteLength != null && byteLength < 0) {
@@ -691,6 +697,7 @@ class SonyPtpCameraAdapter implements CameraAdapter {
     if (token.cancelled) throw StateError('原片传输已取消');
   }
 
+  @override
   Future<void> close() async {
     ++_generation;
     _ready = false;

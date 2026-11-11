@@ -32,7 +32,7 @@ class GalleryOverflowMenu extends StatelessWidget {
             if (context.mounted) {
               ScaffoldMessenger.of(
                 context,
-              ).showSnackBar(const SnackBar(content: Text('缩略图缓存已清理，原片和评分保留')));
+              ).showSnackBar(const SnackBar(content: Text('缩略图缓存已清理，导入原片保留')));
             }
           } catch (_) {
             if (context.mounted) {
@@ -132,7 +132,7 @@ class GalleryDisplaySheet extends StatelessWidget {
                 onChanged: controller.setMergeRawJpeg,
               ),
               const SizedBox(height: 12),
-              const Text('格式先筛选原文件，再合并显示。切换显示方式会保留已选文件和照片评分。'),
+              const Text('格式先筛选原文件，再合并显示。切换显示方式会保留已选文件。'),
             ],
           ),
         ),

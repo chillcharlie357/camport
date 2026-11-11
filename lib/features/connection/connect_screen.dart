@@ -79,8 +79,8 @@ class _ConnectScreenState extends State<ConnectScreen> {
     }
   }
 
-  Future<void> _connectEndpoint(SonyCameraEndpoint endpoint) async {
-    await _connectProfile(endpoint.toProfile());
+  Future<void> _connectEndpoint(CameraProfile endpoint) async {
+    await _connectProfile(endpoint);
   }
 
   Future<void> _connectProfile(CameraProfile profile) async {
@@ -179,7 +179,6 @@ class _ConnectScreenState extends State<ConnectScreen> {
             isConnected: () =>
                 runtime.connected && runtime.profile?.id == profile.id,
             connectionEpoch: () => runtime.connectionEpoch,
-            importJobs: () => runtime.queue.jobs,
           ),
         ),
       ),
@@ -319,7 +318,7 @@ class _StatusCard extends StatelessWidget {
             if (profile != null) ...[
               const SizedBox(height: 8),
               Text(
-                '${profile.model ?? 'Sony 相机'} · Wi-Fi 相机热点',
+                '${profile.model ?? profile.displayName} · Wi-Fi 相机热点',
                 style: Theme.of(context).textTheme.bodyMedium,
               ),
             ],
@@ -380,7 +379,7 @@ class _DiscoverySection extends StatelessWidget {
 
   final AppRuntime runtime;
   final VoidCallback onSearch;
-  final ValueChanged<SonyCameraEndpoint> onConnect;
+  final ValueChanged<CameraProfile> onConnect;
 
   @override
   Widget build(BuildContext context) {
@@ -406,8 +405,10 @@ class _DiscoverySection extends StatelessWidget {
             ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 8),
               leading: const Icon(Icons.wifi),
-              title: Text(endpoint.name ?? endpoint.model ?? 'Sony 相机'),
-              subtitle: Text('${endpoint.host}:${endpoint.ptpPort}'),
+              title: Text(endpoint.displayName),
+              subtitle: Text(
+                endpoint.connectionConfiguration['host'] ?? endpoint.id,
+              ),
               trailing: const Icon(Icons.chevron_right),
               onTap: runtime.connecting ? null : () => onConnect(endpoint),
             ),

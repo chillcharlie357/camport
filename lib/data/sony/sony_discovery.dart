@@ -95,6 +95,7 @@ final class SonyCameraEndpoint {
     model: model,
     connectionKind: ConnectionKind.cameraAccessPoint,
     connectionConfiguration: {
+      'adapter': 'sony-ptp',
       'host': host,
       'port': '$ptpPort',
       if (mediaServer != null) 'mediaServer': '$mediaServer',
