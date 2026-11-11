@@ -18,7 +18,9 @@ String photoIdentity(CameraFile file) {
   if (isPhoto(file) && stem.trim().isNotEmpty) {
     return jsonEncode([
       'photo',
-      path.substring(0, slash + 1),
+      file.directory == null
+          ? path.substring(0, slash + 1)
+          : '${file.directory}/${path.substring(0, slash + 1)}',
       stem.toLowerCase(),
     ]);
   }

@@ -12,11 +12,13 @@ class PhotoPreviewScreen extends StatefulWidget {
     required this.entry,
     required this.controller,
     required this.thumbnails,
+    this.isDemo = true,
     super.key,
   });
   final GalleryEntry entry;
   final GalleryController controller;
   final ThumbnailRepository thumbnails;
+  final bool isDemo;
 
   @override
   State<PhotoPreviewScreen> createState() => _PhotoPreviewScreenState();
@@ -49,7 +51,12 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
         return Scaffold(
           appBar: AppBar(
             title: Text(widget.entry.isPhotoEntry ? '照片预览' : '文件预览'),
-            actions: [GalleryOverflowMenu(controller: widget.controller)],
+            actions: [
+              GalleryOverflowMenu(
+                controller: widget.controller,
+                isDemo: widget.isDemo,
+              ),
+            ],
           ),
           body: SafeArea(
             top: false,
@@ -171,7 +178,11 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
                           child: const Text('本机设置保存失败，点击重试'),
                         ),
                       const SizedBox(height: 24),
-                      const Text('示例文件仅供查看；未连接相机，不会传输文件。'),
+                      Text(
+                        widget.isDemo
+                            ? '示例文件仅供查看；未连接相机，不会传输文件。'
+                            : '当前为缩略图预览；只有选择导入时才传输原片。',
+                      ),
                     ],
                   ),
                 ),

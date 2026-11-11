@@ -66,8 +66,14 @@ final class GalleryController extends ChangeNotifier {
   void toggleEntrySelection(GalleryEntry entry) {
     if (selectionFor(entry) == true) {
       _selectedIds.removeAll(entry.members.map((file) => file.id));
+      for (final file in entry.members) {
+        _selectedSnapshots.remove(file.id);
+      }
     } else {
       _selectedIds.addAll(entry.members.map((file) => file.id));
+      for (final file in entry.members) {
+        _selectedSnapshots[file.id] = file;
+      }
     }
     notifyListeners();
   }
@@ -79,12 +85,23 @@ final class GalleryController extends ChangeNotifier {
   );
 
   Set<String> get selectedFileIds => Set.unmodifiable(_selectedIds);
-  List<CameraFile> get selectedFiles =>
-      List.unmodifiable(_files.where(isSelected));
+  List<CameraFile> get selectedFiles {
+    final loaded = _files.map((f) => f.id).toSet();
+    return List.unmodifiable([
+      ..._files.where(isSelected),
+      ..._selectedSnapshots.values.where(
+        (f) => _selectedIds.contains(f.id) && !loaded.contains(f.id),
+      ),
+    ]);
+  }
 
   final CameraAdapter _adapter;
   List<CameraFile> _files = const [];
   final Set<String> _selectedIds = {};
+  final _selectedSnapshots = <String, CameraFile>{};
+  String? _nextCursor;
+  bool _isLoadingMore = false;
+  Object? _loadMoreError;
   CameraFileFormat? _activeFormat;
   bool _isLoading = true;
   Object? _loadError;
@@ -121,6 +138,9 @@ final class GalleryController extends ChangeNotifier {
 
   CameraFileFormat? get activeFormat => _activeFormat;
   bool get isLoading => _isLoading;
+  bool get hasMore => _nextCursor != null;
+  bool get isLoadingMore => _isLoadingMore;
+  Object? get loadMoreError => _loadMoreError;
   Object? get loadError => _loadError;
   int get selectedCount => _selectedIds.length;
   bool isSelected(CameraFile file) => _selectedIds.contains(file.id);
@@ -131,19 +151,70 @@ final class GalleryController extends ChangeNotifier {
     final requestGeneration = ++_requestGeneration;
     _isLoading = true;
     _loadError = null;
+    _nextCursor = null;
+    _isLoadingMore = false;
+    _loadMoreError = null;
     notifyListeners();
     try {
       final page = await _adapter.listFiles();
       if (!_isCurrentRequest(requestGeneration)) return;
       _files = List.unmodifiable(page.items);
+      _nextCursor = page.nextCursor;
       _identities = photoIdentities(_files);
-      _selectedIds.retainAll(_files.map((file) => file.id));
+      _reconcileSelection();
     } catch (error) {
       if (!_isCurrentRequest(requestGeneration)) return;
       _loadError = error;
     } finally {
       if (_isCurrentRequest(requestGeneration)) {
         _isLoading = false;
+        notifyListeners();
+      }
+    }
+  }
+
+  void _reconcileSelection() {
+    for (final file in _files) {
+      final old = _selectedSnapshots[file.id];
+      if (old != null &&
+          old.thumbnailKey != null &&
+          file.thumbnailKey != old.thumbnailKey) {
+        _selectedIds.remove(file.id);
+        _selectedSnapshots.remove(file.id);
+      } else if (_selectedIds.contains(file.id)) {
+        _selectedSnapshots[file.id] = file;
+      }
+    }
+    if (!hasMore) {
+      _selectedIds.retainAll(_files.map((f) => f.id));
+      _selectedSnapshots.removeWhere((id, _) => !_selectedIds.contains(id));
+    }
+  }
+
+  Future<void> loadMoreFiles() async {
+    final cursor = _nextCursor;
+    if (_isDisposed || _isLoading || _isLoadingMore || cursor == null) return;
+    final generation = _requestGeneration;
+    _isLoadingMore = true;
+    _loadMoreError = null;
+    notifyListeners();
+    try {
+      final page = await _adapter.listFiles(cursor: cursor);
+      if (!_isCurrentRequest(generation)) return;
+      if (page.nextCursor == cursor) throw StateError('相机分页没有前进，请重新载入图库');
+      final files = {
+        for (final f in _files) f.id: f,
+        for (final f in page.items) f.id: f,
+      };
+      _files = List.unmodifiable(files.values);
+      _nextCursor = page.nextCursor;
+      _identities = photoIdentities(_files);
+      _reconcileSelection();
+    } catch (error) {
+      if (_isCurrentRequest(generation)) _loadMoreError = error;
+    } finally {
+      if (_isCurrentRequest(generation)) {
+        _isLoadingMore = false;
         notifyListeners();
       }
     }
@@ -156,13 +227,19 @@ final class GalleryController extends ChangeNotifier {
   }
 
   void toggleSelection(CameraFile file) {
-    if (!_selectedIds.add(file.id)) _selectedIds.remove(file.id);
+    if (!_selectedIds.add(file.id)) {
+      _selectedIds.remove(file.id);
+      _selectedSnapshots.remove(file.id);
+    } else {
+      _selectedSnapshots[file.id] = file;
+    }
     notifyListeners();
   }
 
   void clearSelection() {
     if (_selectedIds.isEmpty) return;
     _selectedIds.clear();
+    _selectedSnapshots.clear();
     notifyListeners();
   }
 

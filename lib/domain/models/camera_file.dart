@@ -35,6 +35,7 @@ final class CameraFile {
     this.capturedAt,
     this.duration,
     this.thumbnailKey,
+    this.directory,
   });
 
   final String id;
@@ -45,4 +46,7 @@ final class CameraFile {
   final DateTime? capturedAt;
   final Duration? duration;
   final String? thumbnailKey;
+
+  /// Camera/storage/directory scope. The display filename remains unchanged.
+  final String? directory;
 }
