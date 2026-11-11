@@ -665,9 +665,7 @@ void main() {
       await stateFile.writeAsString(jsonEncode(json));
       final originalPath = q.jobs.single.destinationPath;
       final length = utf8
-          .encode(
-            'camport-reservation-v1\n${q.jobs.single.id}\n$checksum\n',
-          )
+          .encode('camport-reservation-v1\n${q.jobs.single.id}\n$checksum\n')
           .length;
       final existing = List<int>.filled(length, 255);
       await File(originalPath).writeAsBytes(existing);

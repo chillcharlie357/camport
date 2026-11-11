@@ -15,8 +15,7 @@ enum BackgroundTransferEvent {
 /// persist/pause work on interruption, and call [stop] in its finally block.
 class TransferBackground {
   TransferBackground({MethodChannel? channel})
-    : _channel =
-          channel ?? const MethodChannel('camport/transfer_background') {
+    : _channel = channel ?? const MethodChannel('camport/transfer_background') {
     _channel.setMethodCallHandler(_handleCall);
   }
 

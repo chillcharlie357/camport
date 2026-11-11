@@ -609,18 +609,24 @@ void main() {
     );
     expect(await part.length(), 1024 * 1024);
   });
-  test('legacy 0x9211 chunked download is used when 0x9219 is absent', () async {
-    wire.ops.remove(0x9219);
-    wire.ops.add(0x9211);
-    await adapter.connect(candidate());
-    final part = File('${temp.path}/legacy.part');
-    await adapter
-        .downloadOriginal('00010001:00000001', part.path)
-        .drain<void>();
-    expect(wire.calls.any((c) => c.op == 0x9211), isTrue);
-    expect(wire.calls.any((c) => c.op == 0x9219), isFalse);
-    expect(await part.readAsBytes(), List.generate(wire.size, (i) => i % 251));
-  });
+  test(
+    'legacy 0x9211 chunked download is used when 0x9219 is absent',
+    () async {
+      wire.ops.remove(0x9219);
+      wire.ops.add(0x9211);
+      await adapter.connect(candidate());
+      final part = File('${temp.path}/legacy.part');
+      await adapter
+          .downloadOriginal('00010001:00000001', part.path)
+          .drain<void>();
+      expect(wire.calls.any((c) => c.op == 0x9211), isTrue);
+      expect(wire.calls.any((c) => c.op == 0x9219), isFalse);
+      expect(
+        await part.readAsBytes(),
+        List.generate(wire.size, (i) => i % 251),
+      );
+    },
+  );
   test('source revision change refuses queued file before writing', () async {
     await adapter.connect(candidate());
     final meta = await adapter.describeFile('00010001:00000001');

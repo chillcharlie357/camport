@@ -534,7 +534,8 @@ class SonyPtpCameraAdapter implements CameraSession {
         final count = operation == 0x1009
             ? meta.byteLength
             : math.min(_chunkBytes, meta.byteLength - committed);
-        final params = operation == _ocGetPartialLargeObject ||
+        final params =
+            operation == _ocGetPartialLargeObject ||
                 operation == _ocLegacyGetPartialObject
             ? [
                 ref.handle,
