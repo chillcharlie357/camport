@@ -15,3 +15,9 @@
 - [v2.2 完整 PDF](design/sony-transfer/exports/v2.2/sony-camera-design-v2.2.pdf)，[同名合并/评分写回状态图](design/sony-transfer/exports/v2.2/merge-rating.png)。
 
 最新用户决策及需求/验收文档优先于历史图稿和旧计划；设计数据不代表真实相机连接或性能实测。
+
+## 实现与协议研究
+
+- [实施计划与进度](superpowers/plans/2026-11-10-sony-camera-transfer.md)。
+- [Android 参考应用静态协议线索](research/android-protocol-evidence.md)：包哈希、IEM 媒体访问分支和评分写回的证据边界。
+- [CI/CD 与自动 Release](superpowers/specs/2026-11-10-cicd-release-design.md)：合并触发、版本规则、签名和失败恢复。

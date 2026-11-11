@@ -1,1 +1,15 @@
 .worktrees/
+.tools/
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+*.iml
+.idea/
+.omx/
+.playwright-cli/
+.superpowers/
+output/
+__pycache__/
