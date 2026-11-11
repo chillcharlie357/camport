@@ -17,6 +17,6 @@
 
 ## Evidence and scope
 
-IEM base APK SHA-256 remains recorded in `docs/research/android-protocol-evidence.md`. Targeted static files in `/private/tmp/sony-static-protocol/runtime-focus` identify Connect `[phase,0,0]`, SDIO_OpenSession `[1,mode]`, and GetPartialLargeObject `0x9211` with `[handle,offsetLow,offsetHigh,count]`; `0x9219` is a distinct short-video operation and is not substituted for original transfer.
+IEM base APK SHA-256 remains recorded in `docs/research/android-protocol-evidence.md`. Targeted static files in `/private/tmp/sony-static-protocol/runtime-focus` identify Connect `[phase,0,0]` and SDIO_OpenSession `[1,mode]`. The original-download opcode was later cross-checked against the ZV-E10 Creators' App and an A7 IV packet capture: ZV-E10 uses `SDIO_GetPartialLargeObject (0x9219)` with `[handle,offsetLow,offsetHigh,count]`, while the older IEM-era build used `0x9211`. CamPort now prefers whichever opcode the camera advertises, then falls back to `0x9211`, standard `GetPartialObject (0x101B)`, and `GetObject (0x1009)`.
 
 The public [ZV-E10 protocol investigation](https://github.com/peiyuanix/zv-e10-creators-app-patcher/blob/master/docs/en/01-how-it-works.md) reports Smartphone Connect exposing card media, unlike PC Remote mode. This guides implementation and fixture cases; it is not our app's own hardware acceptance. Actual firmware/radio/background speed remains a separate device-validation gate.
