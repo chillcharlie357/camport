@@ -32,8 +32,8 @@
 ## 原片下载
 
 - 先 `describeFile` 再用 `expectFile` 校验源版本和预期长度。
-- 优先走 Sony `0x9211` 部分读取：对象句柄、低位偏移、高位偏移、单块不超过 1 MiB。
-- 收到部分数据后按能力使用 `0x101b` 继续；不符合期望字节数时回滚到已提交进度。
+- 优先使用相机在 `GetDeviceInfo` 中实际报告的 Sony 分块读取：ZV-E10 / Creators' App 为 `SDIO_GetPartialLargeObject (0x9219)`，旧 IEM 固件为 `0x9211`，参数都是对象句柄、低位偏移、高位偏移、单块不超过 1 MiB。
+- 退回标准 `GetPartialObject (0x101b)` 或 `GetObject (0x1009)`；不符合期望字节数时回滚到已提交进度。
 - 仅支持 `GetObject` 的相机重头下载，不声称支持断点续传。
 - 下载过程进行字节计数与校验，成功校验后才发布最终文件。
 
