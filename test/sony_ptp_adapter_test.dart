@@ -32,7 +32,7 @@ const basicOps = [
   0x101b,
   0x9803,
 ];
-const sonyOps = [...basicOps, 0x9210, 0x9201, 0x9202, 0x9212, 0x9211];
+const sonyOps = [...basicOps, 0x9210, 0x9201, 0x9202, 0x9212, 0x9219];
 Uint8List device(
   List<int> ops, {
   String serial = 'SN123456',
@@ -213,6 +213,7 @@ class CameraTransport extends PtpIpTransport {
         return thumbnail == null
             ? result(code: 0x2010)
             : result(bytes: thumbnail!);
+      case 0x9219:
       case 0x9211:
       case 0x101b:
       case 0x1009:
@@ -227,7 +228,9 @@ class CameraTransport extends PtpIpTransport {
         final offset = operation == 0x1009
             ? 0
             : parameters[1] +
-                  (operation == 0x9211 ? parameters[2] * 0x100000000 : 0);
+                  ((operation == 0x9219 || operation == 0x9211)
+                      ? parameters[2] * 0x100000000
+                      : 0);
         final requested = operation == 0x1009 ? size : parameters.last;
         final count = shortSuccess ? requested - 1 : requested;
         final bytes = Uint8List.fromList(
@@ -584,10 +587,10 @@ void main() {
     final part = File('${temp.path}/image.part');
     await part.writeAsBytes(List.generate(23, (i) => i % 251));
     final updates = await adapter.downloadOriginal(meta.id, part.path).toList();
-    final chunks = wire.calls.where((c) => c.op == 0x9211).toList();
+    final chunks = wire.calls.where((c) => c.op == 0x9219).toList();
     expect(chunks.first.params, [1, 23, 0, 1024 * 1024]);
     expect(chunks.every((c) => c.streaming), isTrue);
-    expect(wire.calls.any((c) => c.op == 0x9219), isFalse);
+    expect(wire.calls.any((c) => c.op == 0x9211), isFalse);
     expect(updates.last.bytesTransferred, wire.size);
     expect(await part.length(), wire.size);
     final content = await part.readAsBytes();
@@ -606,6 +609,18 @@ void main() {
     );
     expect(await part.length(), 1024 * 1024);
   });
+  test('legacy 0x9211 chunked download is used when 0x9219 is absent', () async {
+    wire.ops.remove(0x9219);
+    wire.ops.add(0x9211);
+    await adapter.connect(candidate());
+    final part = File('${temp.path}/legacy.part');
+    await adapter
+        .downloadOriginal('00010001:00000001', part.path)
+        .drain<void>();
+    expect(wire.calls.any((c) => c.op == 0x9211), isTrue);
+    expect(wire.calls.any((c) => c.op == 0x9219), isFalse);
+    expect(await part.readAsBytes(), List.generate(wire.size, (i) => i % 251));
+  });
   test('source revision change refuses queued file before writing', () async {
     await adapter.connect(candidate());
     final meta = await adapter.describeFile('00010001:00000001');
@@ -622,12 +637,12 @@ void main() {
       throwsA(anything),
     );
     expect(await part.readAsBytes(), [1, 2, 3]);
-    expect(wire.calls.any((c) => c.op == 0x9211), isFalse);
+    expect(wire.calls.any((c) => c.op == 0x9219), isFalse);
   });
   test(
     '32-bit partial fallback is negotiated, short video opcode never used',
     () async {
-      wire.ops.remove(0x9211);
+      wire.ops.remove(0x9219);
       wire.size = 17;
       await adapter.connect(candidate());
       final part = File('${temp.path}/image.part');
@@ -640,7 +655,7 @@ void main() {
     },
   );
   test('GetObject-only capability restarts partial file instead of claiming resume', () async {
-    wire.ops.removeWhere((op) => op == 0x9211 || op == 0x101b);
+    wire.ops.removeWhere((op) => op == 0x9219 || op == 0x101b);
     wire.size = 17;
     await adapter.connect(candidate());
     final part = File('${temp.path}/image.part');
@@ -664,7 +679,7 @@ void main() {
           .toList();
       expect(progress, hasLength(1));
       expect(progress.single.bytesTransferred, 7);
-      expect(wire.calls.any((c) => c.op == 0x9211 || c.op == 0x1009), isFalse);
+      expect(wire.calls.any((c) => c.op == 0x9219 || c.op == 0x1009), isFalse);
     },
   );
   test(
@@ -686,7 +701,7 @@ void main() {
     'unsupported large partial falls back only to advertised standard partial',
     () async {
       wire.size = 15;
-      wire.errors[0x9211] = 0x2005;
+      wire.errors[0x9219] = 0x2005;
       await adapter.connect(candidate());
       final part = File('${temp.path}/fallback.part');
       await part.writeAsBytes([0, 1, 2]);
@@ -701,7 +716,7 @@ void main() {
   test(
     'unrepresentable standard-partial offset refuses without truncating',
     () async {
-      wire.ops.removeWhere((op) => op == 0x9211 || op == 0x1009);
+      wire.ops.removeWhere((op) => op == 0x9219 || op == 0x1009);
       wire.size = 0x100000020;
       await adapter.connect(candidate());
       final part = File('${temp.path}/large.part');

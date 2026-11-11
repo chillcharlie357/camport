@@ -19,6 +19,13 @@ import '../protocol/ptp_ip_transport.dart';
 
 const _ok = 0x2001;
 const _chunkBytes = 1024 * 1024;
+// Sony's contents-transfer (Smartphone Connect) download is a vendor opcode
+// that differs from the standard PTP GetPartialObject. Creators' App and the
+// ZV-E10 use SDIO_GetPartialLargeObject (0x9219); older Imaging Edge Mobile
+// builds advertised the same role as 0x9211. Support both, preferring the
+// opcode the camera actually reports.
+const _ocGetPartialLargeObject = 0x9219;
+const _ocLegacyGetPartialObject = 0x9211;
 const _pcRemote =
     '相机没有提供存储卡内容传输。请关闭 PC Remote（电脑遥控），在相机上使用 Smartphone Connect（智能手机连接）后重试。';
 
@@ -216,7 +223,12 @@ class SonyPtpCameraAdapter implements CameraSession {
         0x1008,
       ].every(_operations.contains),
       hasThumbnails: _operations.contains(0x100a),
-      canDownloadOriginals: [0x9211, 0x101b, 0x1009].any(_operations.contains),
+      canDownloadOriginals: [
+        _ocGetPartialLargeObject,
+        _ocLegacyGetPartialObject,
+        0x101b,
+        0x1009,
+      ].any(_operations.contains),
       canRemoteControl: false,
       hasLiveView: false,
     );
@@ -522,7 +534,8 @@ class SonyPtpCameraAdapter implements CameraSession {
         final count = operation == 0x1009
             ? meta.byteLength
             : math.min(_chunkBytes, meta.byteLength - committed);
-        final params = operation == 0x9211
+        final params = operation == _ocGetPartialLargeObject ||
+                operation == _ocLegacyGetPartialObject
             ? [
                 ref.handle,
                 committed & 0xffffffff,
@@ -626,7 +639,12 @@ class SonyPtpCameraAdapter implements CameraSession {
   }
 
   int _downloadOperation(int total, int offset) {
-    if (_operations.contains(0x9211)) return 0x9211;
+    if (_operations.contains(_ocGetPartialLargeObject)) {
+      return _ocGetPartialLargeObject;
+    }
+    if (_operations.contains(_ocLegacyGetPartialObject)) {
+      return _ocLegacyGetPartialObject;
+    }
     if (_operations.contains(0x101b) &&
         total <= 0x100000000 &&
         offset <= 0xffffffff) {
