@@ -120,23 +120,54 @@ class _GalleryScreenState extends State<GalleryScreen> {
     WidgetsBinding.instance.ensureVisualUpdate();
   }
 
-  Future<void> _importSelected() async {
+  Future<void> _importSelected() => _importFiles(_controller.selectedFiles);
+
+  Future<void> _importFiles(List<CameraFile> files) async {
     final action = widget.onImport;
     if (action == null) {
       _showImportNotice();
       return;
     }
-    if (_importing || _controller.selectedCount == 0) return;
+    if (_importing || files.isEmpty) return;
     setState(() => _importing = true);
+    final counts = <CameraFileFormat, int>{};
+    for (final file in files) {
+      counts.update(file.format, (value) => value + 1, ifAbsent: () => 1);
+    }
     try {
-      await action(_controller.selectedFiles);
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('导入 ${files.length} 个原始文件？'),
+          content: Text(
+            counts.entries
+                .map((item) => '${cameraFormatLabel(item.key)} ${item.value} 个')
+                .join(' · '),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('加入导入队列'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmed != true) return;
+      await action(files);
       if (!mounted) return;
-      _controller.clearSelection();
+      if (files.length == _controller.selectedCount &&
+          files.every(_controller.isSelected)) {
+        _controller.clearSelection();
+      }
       widget.onOpenQueue?.call();
     } catch (error) {
       if (mounted) {
         ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('导入未开始，选择已保留：$error')));
+            .showSnackBar(SnackBar(content: Text('加入队列失败，选择已保留：$error')));
       }
     } finally {
       if (mounted) setState(() => _importing = false);
@@ -203,6 +234,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
           controller: _controller,
           thumbnails: _thumbnails,
           isDemo: widget.cameraName == null,
+          onImport: widget.onImport == null ? null : _importFiles,
         ),
       ),
     );
@@ -364,6 +396,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
           ),
           bottomNavigationBar: _SelectionBar(
             selectedCount: _controller.selectedCount,
+            isDemo: widget.onImport == null,
             onClear: _controller.clearSelection,
             onImport: _importSelected,
           ),
@@ -483,11 +516,13 @@ class _GalleryMessage extends StatelessWidget {
 class _SelectionBar extends StatelessWidget {
   const _SelectionBar({
     required this.selectedCount,
+    required this.isDemo,
     required this.onClear,
     required this.onImport,
   });
 
   final int selectedCount;
+  final bool isDemo;
   final VoidCallback onClear;
   final VoidCallback onImport;
 
@@ -507,7 +542,11 @@ class _SelectionBar extends StatelessWidget {
       child: const Text('清除'),
     );
     final importButton = Tooltip(
-      message: selectedCount == 0 ? '先选择文件' : '示例文件仅供预览；不会传输',
+      message: selectedCount == 0
+          ? '先选择文件'
+          : isDemo
+          ? '示例文件仅供预览；不会传输'
+          : '将所选原始文件加入导入队列',
       child: FilledButton.icon(
         onPressed: selectedCount == 0 ? null : onImport,
         icon: const Icon(Icons.file_download_outlined, size: 19),

@@ -186,6 +186,34 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     return operation;
   }
 
+  /// Forget a saved endpoint only when no unfinished transfer depends on it.
+  Future<void> forgetProfile(String profileId) async {
+    await ready;
+    if (connected && profile?.id == profileId ||
+        connecting ||
+        queue.jobs.any(
+          (job) =>
+              job.cameraId == profileId &&
+              job.state != TransferState.completed &&
+              job.state != TransferState.cancelled,
+        )) {
+      throw StateError('该相机正在使用或仍有未完成的导入任务，请先完成或取消任务');
+    }
+    final old = _profiles.remove(profileId);
+    if (old == null) return;
+    final previousLast = _lastProfileId;
+    if (_lastProfileId == profileId) _lastProfileId = null;
+    try {
+      await _persist();
+      _notify();
+    } catch (_) {
+      _profiles[profileId] = old;
+      _lastProfileId = previousLast;
+      _notify();
+      rethrow;
+    }
+  }
+
   Future<void> search() async {
     await ready;
     if (discovering || connecting || queue.isRunning) return;
@@ -213,12 +241,28 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<CameraProfile> connectProfile(CameraProfile target) {
+  Future<CameraProfile> connectProfile(CameraProfile target) =>
+      _connectProfile(target, forTransfer: false);
+
+  Future<CameraProfile> _connectProfile(
+    CameraProfile target, {
+    required bool forTransfer,
+  }) {
+    if (_closed) return Future.error(StateError('应用会话已关闭'));
+    if (queue.isRunning &&
+        !forTransfer &&
+        !(connected && profile?.id == target.id)) {
+      return Future.error(StateError('正在导入原片，请先暂停导入队列再切换相机'));
+    }
     final existing = _connecting;
-    if (existing != null) return existing.then((_) => connectProfile(target));
+    if (existing != null) {
+      return existing.then(
+        (_) => _connectProfile(target, forTransfer: forTransfer),
+      );
+    }
     if (connected && profile?.id == target.id) return Future.value(profile!);
     final generation = ++_generation;
-    final operation = _connect(target, generation);
+    final operation = _connect(target, generation, forTransfer: forTransfer);
     _connecting = operation;
     _notify();
     return operation.whenComplete(() {
@@ -229,7 +273,11 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     });
   }
 
-  Future<CameraProfile> _connect(CameraProfile target, int generation) async {
+  Future<CameraProfile> _connect(
+    CameraProfile target,
+    int generation, {
+    required bool forTransfer,
+  }) async {
     await ready;
     error = null;
     final network = await background.prepareNetwork().timeout(
@@ -240,7 +288,14 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     if (network['connected'] != true) {
       throw StateError(networkMessage ?? '请先连接相机 Wi-Fi');
     }
+    if (queue.isRunning &&
+        !forTransfer &&
+        !(connected && profile?.id == target.id)) {
+      throw StateError('正在导入原片，请先暂停导入队列再切换相机');
+    }
     await _adapter?.close();
+    if (_closed || generation != _generation) throw StateError('连接已取消');
+    _adapter = null;
     final adapter = SonyPtpCameraAdapter(guid: _guid);
     _opening = adapter;
     try {
@@ -252,10 +307,12 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
       _lastProfileId = result.id;
       connectionEpoch++;
       await _persist();
+      if (_closed || generation != _generation) throw StateError('连接已取消');
       _notify();
       return result;
     } catch (e) {
       await adapter.close();
+      if (identical(_adapter, adapter)) _adapter = null;
       if (identical(_opening, adapter)) _opening = null;
       if (generation == _generation) {
         error = e;
@@ -265,18 +322,21 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     }
   }
 
-  Future<SonyPtpCameraAdapter> _ensureCamera(String cameraId) async {
+  Future<SonyPtpCameraAdapter> _ensureCamera(
+    String cameraId, {
+    bool forTransfer = false,
+  }) async {
     await ready;
     if (connected && profile?.id == cameraId) return _adapter!;
     final saved = _profiles[cameraId];
     if (saved == null) throw StateError('找不到此相机的连接记录，请重新连接并选择文件');
-    await connectProfile(saved);
+    await _connectProfile(saved, forTransfer: forTransfer);
     if (profile?.id != cameraId) throw StateError('相机身份已变化，未开始原片传输');
     return _adapter!;
   }
 
   Future<CameraAdapter> _resolveJob(TransferJob job) async {
-    final adapter = await _ensureCamera(job.cameraId);
+    final adapter = await _ensureCamera(job.cameraId, forTransfer: true);
     adapter.expectFile(
       job.cameraFileId,
       sourceVersion: job.sourceVersion,
@@ -296,7 +356,14 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
       files: files,
       destination: importDirectory,
     );
-    await resumeTransfers();
+    try {
+      await resumeTransfers();
+    } catch (failure) {
+      // The queue entry is already durable. Keep it visible for a manual
+      // retry instead of telling the caller that the import was not queued.
+      error = failure;
+      _notify();
+    }
   }
 
   Future<void> resumeTransfers() async {
@@ -304,7 +371,14 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     _autoResume = true;
     _lifecyclePaused = false;
     error = null;
-    await _persist();
+    _notify();
+    try {
+      await _persist();
+    } catch (failure) {
+      error = failure;
+      _notify();
+      rethrow;
+    }
     _launchQueue();
   }
 
@@ -391,6 +465,29 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
       _lifecyclePaused = false;
       _launchQueue();
     }
+  }
+
+  Future<void> cancelConnection() async {
+    if (_connecting == null) return;
+    ++_generation;
+    final pending = _connecting;
+    Object? cleanupError;
+    try {
+      await _opening?.close();
+      // Release also cancels a platform permission/network request in progress.
+      // Do this before awaiting the Dart connection so cancellation is prompt.
+      if (!connected && !queue.isRunning) await background.releaseNetwork();
+    } catch (failure) {
+      cleanupError = failure;
+    }
+    try {
+      await pending;
+    } catch (_) {
+      // The caller of connectProfile receives the cancellation error.
+    }
+    _opening = null;
+    _notify();
+    if (cleanupError != null) throw cleanupError;
   }
 
   Future<void> disconnect() async {

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import '../../app/app_runtime.dart';
 import '../../app/app_theme.dart';
 import '../../data/sony/sony_discovery.dart';
+import '../../domain/models/camera_profile.dart';
 import '../gallery/gallery_screen.dart';
 import '../import_queue/import_queue_screen.dart';
 
@@ -30,6 +31,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
   String? _portError;
   String? _sessionError;
   bool _submitting = false;
+  bool _cancelRequested = false;
 
   AppRuntime get runtime => widget.runtime;
 
@@ -57,21 +59,11 @@ class _ConnectScreenState extends State<ConnectScreen> {
 
   Future<void> _submit() async {
     if (_submitting || runtime.connecting || !_validate()) return;
-    final host = _hostController.text.trim();
-    final port = int.parse(_portController.text.trim());
-    setState(() {
-      _submitting = true;
-      _sessionError = null;
-    });
-    try {
-      final endpoint = SonyCameraEndpoint.manual(host, port: port);
-      await runtime.connectProfile(endpoint.toProfile());
-      if (mounted) _openGallery();
-    } catch (error) {
-      if (mounted) setState(() => _sessionError = error.toString());
-    } finally {
-      if (mounted) setState(() => _submitting = false);
-    }
+    final endpoint = SonyCameraEndpoint.manual(
+      _hostController.text.trim(),
+      port: int.parse(_portController.text.trim()),
+    );
+    await _connectProfile(endpoint.toProfile());
   }
 
   Future<void> _search() async {
@@ -88,18 +80,63 @@ class _ConnectScreenState extends State<ConnectScreen> {
   }
 
   Future<void> _connectEndpoint(SonyCameraEndpoint endpoint) async {
+    await _connectProfile(endpoint.toProfile());
+  }
+
+  Future<void> _connectProfile(CameraProfile profile) async {
     if (_submitting || runtime.connecting) return;
     setState(() {
       _submitting = true;
+      _cancelRequested = false;
       _sessionError = null;
     });
     try {
-      await runtime.connectProfile(endpoint.toProfile());
-      if (mounted) _openGallery();
+      await runtime.connectProfile(profile);
+      if (mounted && !_cancelRequested) _openGallery();
     } catch (error) {
-      if (mounted) setState(() => _sessionError = error.toString());
+      if (mounted && !_cancelRequested) {
+        setState(() => _sessionError = error.toString());
+      }
     } finally {
       if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  Future<void> _cancelConnection() async {
+    setState(() {
+      _cancelRequested = true;
+      _sessionError = null;
+    });
+    try {
+      await runtime.cancelConnection();
+    } catch (error) {
+      if (mounted) setState(() => _sessionError = error.toString());
+    }
+  }
+
+  Future<void> _forgetProfile(CameraProfile saved) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('忘记这台相机？'),
+        content: Text('将删除 ${saved.displayName} 的本机连接记录；已导入的文件不会删除。'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext, false),
+            child: const Text('保留'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(dialogContext, true),
+            child: const Text('忘记相机'),
+          ),
+        ],
+      ),
+    );
+    if (!mounted || confirmed != true) return;
+    try {
+      await runtime.forgetProfile(saved.id);
+    } catch (error) {
+      if (mounted) setState(() => _sessionError = error.toString());
     }
   }
 
@@ -165,6 +202,7 @@ class _ConnectScreenState extends State<ConnectScreen> {
                     _StatusCard(
                       runtime: runtime,
                       onDisconnect: _disconnect,
+                      onCancelConnection: _cancelConnection,
                       onOpenGallery: _openGallery,
                       onOpenQueue: _openQueue,
                     ),
@@ -174,6 +212,33 @@ class _ConnectScreenState extends State<ConnectScreen> {
                       onSearch: _search,
                       onConnect: _connectEndpoint,
                     ),
+                    if (runtime.savedProfiles.isNotEmpty) ...[
+                      const SizedBox(height: 20),
+                      Text(
+                        '已保存的相机',
+                        style: Theme.of(context).textTheme.titleMedium,
+                      ),
+                      for (final saved in runtime.savedProfiles)
+                        ListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                          ),
+                          title: Text(saved.displayName),
+                          subtitle: Text(
+                            saved.connectionConfiguration['host'] ?? '地址未知',
+                          ),
+                          trailing: IconButton(
+                            tooltip: '忘记 ${saved.displayName}',
+                            onPressed: _submitting || runtime.connecting
+                                ? null
+                                : () => _forgetProfile(saved),
+                            icon: const Icon(Icons.delete_outline),
+                          ),
+                          onTap: _submitting || runtime.connecting
+                              ? null
+                              : () => _connectProfile(saved),
+                        ),
+                    ],
                     const SizedBox(height: 20),
                     _ManualSection(
                       hostController: _hostController,
@@ -203,12 +268,14 @@ class _StatusCard extends StatelessWidget {
   const _StatusCard({
     required this.runtime,
     required this.onDisconnect,
+    required this.onCancelConnection,
     required this.onOpenGallery,
     required this.onOpenQueue,
   });
 
   final AppRuntime runtime;
   final VoidCallback onDisconnect;
+  final VoidCallback onCancelConnection;
   final VoidCallback onOpenGallery;
   final VoidCallback onOpenQueue;
 
@@ -233,12 +300,18 @@ class _StatusCard extends StatelessWidget {
                 ),
                 if (runtime.connected)
                   const _ConnectedBadge()
-                else if (runtime.connecting)
+                else if (runtime.connecting) ...[
                   const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(strokeWidth: 2),
                   ),
+                  const SizedBox(width: 8),
+                  TextButton(
+                    onPressed: onCancelConnection,
+                    child: const Text('取消连接'),
+                  ),
+                ],
               ],
             ),
             if (profile != null) ...[
@@ -250,18 +323,18 @@ class _StatusCard extends StatelessWidget {
             ],
             if (runtime.connected) ...[
               const SizedBox(height: 16),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   FilledButton(
                     onPressed: onOpenGallery,
                     child: const Text('浏览图库'),
                   ),
-                  const SizedBox(width: 8),
                   OutlinedButton(
                     onPressed: onOpenQueue,
                     child: const Text('导入队列'),
                   ),
-                  const SizedBox(width: 8),
                   TextButton(
                     onPressed: onDisconnect,
                     child: const Text('断开连接'),

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../app/app_theme.dart';
 import '../../domain/models/gallery_entry.dart';
+import '../../domain/models/camera_file.dart';
 import 'gallery_controller.dart';
 import 'format_filter_row.dart';
 import 'camera_thumbnail.dart';
@@ -13,12 +14,14 @@ class PhotoPreviewScreen extends StatefulWidget {
     required this.controller,
     required this.thumbnails,
     this.isDemo = true,
+    this.onImport,
     super.key,
   });
   final GalleryEntry entry;
   final GalleryController controller;
   final ThumbnailRepository thumbnails;
   final bool isDemo;
+  final Future<void> Function(List<CameraFile>)? onImport;
 
   @override
   State<PhotoPreviewScreen> createState() => _PhotoPreviewScreenState();
@@ -177,6 +180,16 @@ class _PhotoPreviewScreenState extends State<PhotoPreviewScreen> {
                           ),
                           child: const Text('本机设置保存失败，点击重试'),
                         ),
+                      if (widget.onImport != null) ...[
+                        const SizedBox(height: 24),
+                        FilledButton.icon(
+                          onPressed: () => widget.onImport!([file]),
+                          icon: const Icon(Icons.file_download_outlined),
+                          label: Text(
+                            '导入此 ${cameraFormatLabel(file.format)} 文件',
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 24),
                       Text(
                         widget.isDemo

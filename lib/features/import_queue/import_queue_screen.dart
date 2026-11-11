@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 
@@ -30,6 +31,7 @@ class ImportQueueScreen extends StatefulWidget {
 
 class _ImportQueueScreenState extends State<ImportQueueScreen> {
   AppRuntime get runtime => widget.runtime;
+  String? _actionError;
 
   bool get _hasEligible => runtime.queue.jobs.any(
     (job) =>
@@ -39,27 +41,39 @@ class _ImportQueueScreenState extends State<ImportQueueScreen> {
 
   Future<void> _resume() async {
     try {
+      setState(() => _actionError = null);
       await runtime.resumeTransfers();
-    } catch (_) {
-      // The queue runner surfaces the error through runtime.error.
+    } catch (error) {
+      if (mounted) setState(() => _actionError = error.toString());
     }
   }
 
   Future<void> _pause() async {
     try {
+      setState(() => _actionError = null);
       await runtime.pauseTransfers();
-    } catch (_) {
-      // Pausing is best-effort; partial files are retained for resume.
+    } catch (error) {
+      if (mounted) setState(() => _actionError = error.toString());
     }
   }
 
   Future<void> _retry(TransferJob job) async {
-    await runtime.queue.retry(job.id);
-    await _resume();
+    try {
+      setState(() => _actionError = null);
+      await runtime.queue.retry(job.id);
+      await _resume();
+    } catch (error) {
+      if (mounted) setState(() => _actionError = error.toString());
+    }
   }
 
   Future<void> _cancel(TransferJob job) async {
-    await runtime.queue.cancel(job.id);
+    try {
+      setState(() => _actionError = null);
+      await runtime.queue.cancel(job.id);
+    } catch (error) {
+      if (mounted) setState(() => _actionError = error.toString());
+    }
   }
 
   void _openDetail(TransferJob job) {
@@ -77,7 +91,10 @@ class _ImportQueueScreenState extends State<ImportQueueScreen> {
       builder: (context, _) => Scaffold(
         appBar: AppBar(title: const Text('导入队列')),
         body: SafeArea(
-          child: runtime.queue.jobs.isEmpty
+          child:
+              runtime.queue.jobs.isEmpty &&
+                  runtime.error == null &&
+                  _actionError == null
               ? const _EmptyState()
               : Column(
                   children: [
@@ -87,6 +104,27 @@ class _ImportQueueScreenState extends State<ImportQueueScreen> {
                       onResume: _resume,
                       onPause: _pause,
                     ),
+                    if (runtime.error != null || _actionError != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _actionError ?? runtime.error.toString(),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: Theme.of(context).colorScheme.error,
+                                  ),
+                            ),
+                            if (!runtime.queue.isRunning && _hasEligible)
+                              TextButton(
+                                onPressed: _resume,
+                                child: const Text('重试继续导入'),
+                              ),
+                          ],
+                        ),
+                      ),
                     if (runtime.queue.recoveryWarning != null)
                       Padding(
                         padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
@@ -293,13 +331,65 @@ class _JobCard extends StatelessWidget {
   }
 }
 
+class _LocalPhotoScreen extends StatelessWidget {
+  const _LocalPhotoScreen({required this.file});
+
+  final File file;
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: Text(file.uri.pathSegments.last)),
+    body: SafeArea(
+      child: Center(
+        child: InteractiveViewer(
+          minScale: 0.5,
+          maxScale: 4,
+          child: Image.file(
+            file,
+            cacheWidth: 2048,
+            fit: BoxFit.contain,
+            errorBuilder: (context, error, stack) => const Padding(
+              padding: EdgeInsets.all(24),
+              child: Text('本机文件无法解码，请使用文件管理器打开原始文件。'),
+            ),
+          ),
+        ),
+      ),
+    ),
+  );
+}
+
 class _JobDetailScreen extends StatelessWidget {
   const _JobDetailScreen({required this.job});
 
   final TransferJob job;
 
+  Future<void> _openLocal(BuildContext context) async {
+    final file = File(job.destinationPath);
+    try {
+      if (await FileSystemEntity.type(file.path, followLinks: false) !=
+          FileSystemEntityType.file) {
+        throw const FileSystemException('本机文件已移动或不可访问');
+      }
+      if (!context.mounted) return;
+      await Navigator.of(context).push<void>(
+        MaterialPageRoute(builder: (_) => _LocalPhotoScreen(file: file)),
+      );
+    } catch (error) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('无法打开本机文件：$error')));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final canPreview =
+        job.state == TransferState.completed &&
+        (job.fileName.toLowerCase().endsWith('.jpg') ||
+            job.fileName.toLowerCase().endsWith('.jpeg') ||
+            job.fileName.toLowerCase().endsWith('.png'));
     return Scaffold(
       appBar: AppBar(title: const Text('导入详情')),
       body: SafeArea(
@@ -319,6 +409,14 @@ class _JobDetailScreen extends StatelessWidget {
                   Text(
                     '${_stateLabel(job.state)} · ${_formatBytes(job.totalBytes)}',
                   ),
+                  if (canPreview) ...[
+                    const SizedBox(height: 12),
+                    OutlinedButton.icon(
+                      onPressed: () => _openLocal(context),
+                      icon: const Icon(Icons.image_outlined),
+                      label: const Text('查看本机照片'),
+                    ),
+                  ],
                   const SizedBox(height: 20),
                   const Divider(height: 1),
                   const SizedBox(height: 16),

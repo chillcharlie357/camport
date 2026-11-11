@@ -31,7 +31,10 @@ class SonyPtpCameraAdapter implements CameraAdapter {
     PtpIpTransport? transport,
     this.pageSize = 20,
   }) : _guid = Uint8List.fromList(guid),
-       _transport = transport ?? PtpIpTransport() {
+       // GetObject-only cameras may send an entire large original in one
+       // PTP/IP packet. The transport still pulls at most 64 KiB at a time,
+       // while each command's maxDataBytes is the fresh source file size.
+       _transport = transport ?? PtpIpTransport(maxPacketBytes: 0xffffffff) {
     if (guid.length != 16 || pageSize < 1 || pageSize > 200) {
       throw ArgumentError('Invalid Sony adapter configuration');
     }
@@ -623,7 +626,11 @@ class SonyPtpCameraAdapter implements CameraAdapter {
         offset <= 0xffffffff) {
       return 0x101b;
     }
-    if (_operations.contains(0x1009)) return 0x1009;
+    // PTP/IP packet length is a 32-bit field. GetObject may return the whole
+    // file as a single EndData packet (header + transaction ID + payload).
+    if (_operations.contains(0x1009) && total <= 0xffffffff - 12) {
+      return 0x1009;
+    }
     throw UnsupportedError('相机不支持此文件大小的原片传输或 64 位续传');
   }
 

@@ -94,6 +94,17 @@ final class TransferQueue extends ChangeNotifier {
           .map((j) => j.destinationPath.toLowerCase())
           .toSet();
       for (final file in files) {
+        // Avoid duplicate pending work when the same source is selected twice.
+        // A camera handle and metadata do not prove equal original bytes.
+        if (file.thumbnailKey != null &&
+            (await _alreadyImported(
+              cameraId: cameraId,
+              file: file,
+              destination: destination,
+              additions: additions,
+            ))) {
+          continue;
+        }
         final id = _newId();
         final path = await _available(
           destination.absolute.path,
@@ -118,11 +129,41 @@ final class TransferQueue extends ChangeNotifier {
           ),
         );
       }
+      if (additions.isEmpty) return;
       // Publish the new jobs only after durable save succeeds.
       await _save([..._jobs, ...additions]);
       _jobs.addAll(additions);
       _notify();
     });
+  }
+
+  Future<bool> _alreadyImported({
+    required String cameraId,
+    required CameraFile file,
+    required Directory destination,
+    required List<TransferJob> additions,
+  }) async {
+    for (final job in [..._jobs, ...additions]) {
+      if (job.cameraId != cameraId ||
+          job.cameraFileId != file.id ||
+          job.sourceVersion != file.thumbnailKey ||
+          job.sourceCapturedAt != file.capturedAt ||
+          job.totalBytes != file.byteLength ||
+          File(job.destinationPath).parent.absolute.path !=
+              destination.absolute.path) {
+        continue;
+      }
+      if (job.state == TransferState.queued ||
+          job.state == TransferState.connecting ||
+          job.state == TransferState.copying ||
+          job.state == TransferState.interrupted) {
+        return true;
+      }
+      // A completed file's local hash only verifies local bytes. Camera
+      // metadata may stay the same after a source rewrite, so a repeat import
+      // gets a distinct path until the camera supplies a source checksum.
+    }
+    return false;
   }
 
   Future<void> start() {
