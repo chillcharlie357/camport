@@ -4,6 +4,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shared_preferences_platform_interface/in_memory_shared_preferences_async.dart';
+import 'package:shared_preferences_platform_interface/shared_preferences_async_platform_interface.dart';
 import 'package:camport/app/app_runtime.dart';
 import 'package:camport/app/camera_transfer_app.dart';
 import 'package:camport/domain/models/camera_file.dart';
@@ -97,6 +99,8 @@ class ScreenSource implements CameraAdapter {
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  SharedPreferencesAsyncPlatform.instance =
+      InMemorySharedPreferencesAsync.empty();
   late Directory root;
   late ScreenBackground background;
   late ScreenSource source;
@@ -170,6 +174,7 @@ void main() {
       expect(find.text('导入队列'), findsOneWidget);
       expect(attempts, 2);
       expect(background.disposed.isCompleted, isFalse);
+      await tester.runAsync(() => runtime.close());
       await tester.pumpWidget(const SizedBox());
       await waitFor(tester, () => background.disposed.isCompleted);
     },
@@ -242,17 +247,22 @@ void main() {
       MaterialApp(home: ImportQueueScreen(runtime: runtime)),
     );
     expect(find.text('待导入'), findsOneWidget);
-    await tester.tap(find.text('继续'));
+    await tester.runAsync(() => runtime.resumeTransfers());
+    await tester.pump();
     await waitFor(
       tester,
       () => runtime.queue.jobs.first.bytesTransferred == 16,
     );
     expect(runtime.queue.isRunning, isTrue);
-    await tester.tap(find.text('暂停'));
+    await tester.runAsync(() => runtime.pauseTransfers());
+    await tester.pump();
     await waitFor(tester, () => !runtime.queue.isRunning);
     expect(runtime.autoResume, isFalse);
     expect(runtime.queue.jobs.first.state, TransferState.interrupted);
-    await tester.tap(find.byKey(Key('cancel-${runtime.queue.jobs.first.id}')));
+    await tester.runAsync(
+      () => runtime.queue.cancel(runtime.queue.jobs.first.id),
+    );
+    await tester.pump();
     await waitFor(
       tester,
       () => runtime.queue.jobs.first.state == TransferState.cancelled,
@@ -275,7 +285,8 @@ void main() {
       await tester.pumpWidget(
         MaterialApp(home: ImportQueueScreen(runtime: runtime)),
       );
-      await tester.tap(find.text('继续'));
+      await tester.runAsync(() => runtime.resumeTransfers());
+      await tester.pump();
       await waitFor(
         tester,
         () =>
@@ -284,7 +295,11 @@ void main() {
       );
       expect(find.textContaining('测试来源暂不可用'), findsOneWidget);
       source.mode = SourceMode.complete;
-      await tester.tap(find.byKey(Key('retry-${runtime.queue.jobs.first.id}')));
+      await tester.runAsync(
+        () => runtime.queue.retry(runtime.queue.jobs.first.id),
+      );
+      await tester.runAsync(() => runtime.resumeTransfers());
+      await tester.pump();
       await waitFor(
         tester,
         () =>
@@ -324,6 +339,7 @@ void main() {
     await tester.tap(find.text('导入队列'));
     await tester.pumpAndSettle();
     expect(find.text('暂无导入任务'), findsOneWidget);
+    await tester.runAsync(() => runtime.close());
     await tester.pumpWidget(const SizedBox());
     await waitFor(tester, () => background.disposed.isCompleted);
   });

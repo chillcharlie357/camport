@@ -190,7 +190,6 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
 
   /// Forget a saved endpoint only when no unfinished transfer depends on it.
   Future<void> forgetProfile(String profileId) async {
-    await ready;
     if (connected && profile?.id == profileId ||
         connecting ||
         queue.jobs.any(
@@ -217,7 +216,6 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> search() async {
-    await ready;
     if (discovering || connecting || queue.isRunning) return;
     discovering = true;
     error = null;
@@ -303,7 +301,6 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     int generation, {
     required bool forTransfer,
   }) async {
-    await ready;
     error = null;
     final network = await background.prepareNetwork().timeout(
       const Duration(seconds: 15),
@@ -368,7 +365,6 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
     String cameraId, {
     bool forTransfer = false,
   }) async {
-    await ready;
     if (connected && profile?.id == cameraId) return _adapter!;
     final saved = _profiles[cameraId];
     if (saved == null) throw StateError('找不到此相机的连接记录，请重新连接并选择文件');
@@ -391,7 +387,6 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
       _proxies.putIfAbsent(cameraId, () => _SessionAdapter(this, cameraId));
 
   Future<void> importFiles(String cameraId, List<CameraFile> files) async {
-    await ready;
     if (files.isEmpty) return;
     await queue.add(
       cameraId: cameraId,
@@ -409,7 +404,6 @@ class AppRuntime extends ChangeNotifier with WidgetsBindingObserver {
   }
 
   Future<void> resumeTransfers() async {
-    await ready;
     _autoResume = true;
     _lifecyclePaused = false;
     error = null;

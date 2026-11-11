@@ -39,7 +39,6 @@ class _CameraTransferAppState extends State<CameraTransferApp> {
     AppRuntime? created;
     try {
       created = await (widget.runtimeFactory ?? AppRuntime.open)();
-      await created.ready;
       if (!mounted) {
         await _closeOwned(created);
         return;
