@@ -78,7 +78,7 @@ class ReleaseTests(unittest.TestCase):
                 build_version(content, 1)
 
     def assets(self, directory):
-        names = [f"sony-camera-0.1.1-{platform}" for platform in
+        names = [f"camport-0.1.1-{platform}" for platform in
                  ("android.apk", "macos.zip", "windows-x64.zip")]
         for name in names:
             (directory / name).write_bytes(name.encode())

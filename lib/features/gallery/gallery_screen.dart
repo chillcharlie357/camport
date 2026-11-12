@@ -3,6 +3,8 @@ import 'package:flutter/rendering.dart';
 
 import '../../app/app_theme.dart';
 import '../../data/local/gallery_preferences.dart';
+import '../../data/local/thumbnail_disk_cache.dart';
+import '../../domain/models/camera_file.dart';
 import '../../domain/ports/camera_adapter.dart';
 import '../../domain/models/gallery_entry.dart';
 import 'camera_file_tile.dart';
@@ -12,10 +14,34 @@ import 'photo_preview_screen.dart';
 import 'thumbnail_repository.dart';
 
 class GalleryScreen extends StatefulWidget {
-  const GalleryScreen({required this.adapter, this.preferences, super.key});
+  const GalleryScreen({
+    required this.adapter,
+    this.preferences,
+    this.cameraName,
+    this.cameraId,
+    this.diskCache,
+    this.cacheNamespace,
+    this.onImport,
+    this.onOpenQueue,
+    this.activity,
+    this.isTransferring,
+    this.isConnected,
+    this.connectionEpoch,
+    super.key,
+  });
 
   final CameraAdapter adapter;
   final GalleryPreferences? preferences;
+  final String? cameraName;
+  final String? cameraId;
+  final ThumbnailDiskCache? diskCache;
+  final String? cacheNamespace;
+  final Future<void> Function(List<CameraFile>)? onImport;
+  final VoidCallback? onOpenQueue;
+  final Listenable? activity;
+  final bool Function()? isTransferring;
+  final bool Function()? isConnected;
+  final int Function()? connectionEpoch;
 
   @override
   State<GalleryScreen> createState() => _GalleryScreenState();
@@ -23,37 +49,132 @@ class GalleryScreen extends StatefulWidget {
 
 class _GalleryScreenState extends State<GalleryScreen> {
   late final GalleryController _controller;
-  late final ThumbnailRepository _thumbnails;
+  late ThumbnailRepository _thumbnails;
   final _scroll = ScrollController();
   final _gridKey = GlobalKey();
   bool _viewportScheduled = false;
   bool _previewOpen = false;
   List<GalleryEntry> _renderedEntries = const [];
+  bool _reloadAfterPreview = false;
+  bool _importing = false;
+  late int _epoch;
+  late bool _connected;
 
   @override
   void initState() {
     super.initState();
     _controller = GalleryController(
       adapter: widget.adapter,
+      cameraId: widget.cameraId,
       preferences: widget.preferences,
     );
-    _thumbnails = ThumbnailRepository(
-      adapter: widget.adapter,
-      // No persistent reuse until camera/storage identity and file versions are
-      // available. Separate gallery sessions cannot share an ambiguous key.
-      namespace: 'gallery:${DateTime.now().microsecondsSinceEpoch}',
-    );
+    _thumbnails = _newThumbnails();
+    _epoch = widget.connectionEpoch?.call() ?? 0;
+    _connected = widget.isConnected?.call() ?? widget.cameraName != null;
+    widget.activity?.addListener(_activityChanged);
     _controller.addListener(_scheduleViewport);
     _scroll.addListener(_scheduleViewport);
   }
 
   @override
   void dispose() {
+    widget.activity?.removeListener(_activityChanged);
     _scroll.dispose();
     _thumbnails.dispose();
     _controller.removeListener(_scheduleViewport);
     _controller.dispose();
     super.dispose();
+  }
+
+  ThumbnailRepository _newThumbnails() => ThumbnailRepository(
+    adapter: widget.adapter,
+    namespace:
+        widget.cacheNamespace ??
+        'gallery:${DateTime.now().microsecondsSinceEpoch}',
+    diskCache: widget.cacheNamespace == null ? null : widget.diskCache,
+  )..setImportActive(widget.isTransferring?.call() ?? false);
+
+  void _activityChanged() {
+    if (!mounted) return;
+    _thumbnails.setImportActive(widget.isTransferring?.call() ?? false);
+    final epoch = widget.connectionEpoch?.call() ?? 0;
+    if (epoch != _epoch) {
+      _epoch = epoch;
+      if (_previewOpen) {
+        _reloadAfterPreview = true;
+      } else {
+        _refreshSession();
+      }
+    }
+    final connected = widget.isConnected?.call() ?? widget.cameraName != null;
+    if (connected != _connected) setState(() => _connected = connected);
+  }
+
+  void _refreshSession() {
+    _thumbnails.dispose();
+    _thumbnails = _newThumbnails();
+    _controller.loadFiles();
+  }
+
+  Future<void> _clearThumbnailCache() async {
+    await _thumbnails.clearCache();
+    PaintingBinding.instance.imageCache.clear();
+    _scheduleViewport();
+    WidgetsBinding.instance.ensureVisualUpdate();
+  }
+
+  Future<void> _importSelected() => _importFiles(_controller.selectedFiles);
+
+  Future<void> _importFiles(List<CameraFile> files) async {
+    final action = widget.onImport;
+    if (action == null) {
+      _showImportNotice();
+      return;
+    }
+    if (_importing || files.isEmpty) return;
+    setState(() => _importing = true);
+    final counts = <CameraFileFormat, int>{};
+    for (final file in files) {
+      counts.update(file.format, (value) => value + 1, ifAbsent: () => 1);
+    }
+    try {
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text('导入 ${files.length} 个原始文件？'),
+          content: Text(
+            counts.entries
+                .map((item) => '${cameraFormatLabel(item.key)} ${item.value} 个')
+                .join(' · '),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(false),
+              child: const Text('取消'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.of(dialogContext).pop(true),
+              child: const Text('加入导入队列'),
+            ),
+          ],
+        ),
+      );
+      if (!mounted || confirmed != true) return;
+      await action(files);
+      if (!mounted) return;
+      if (files.length == _controller.selectedCount &&
+          files.every(_controller.isSelected)) {
+        _controller.clearSelection();
+      }
+      widget.onOpenQueue?.call();
+    } catch (error) {
+      if (mounted) {
+        ScaffoldMessenger.of(context)
+            .showSnackBar(SnackBar(content: Text('加入队列失败，选择已保留：$error')));
+      }
+    } finally {
+      if (mounted) setState(() => _importing = false);
+    }
   }
 
   void _scheduleViewport() {
@@ -97,6 +218,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
             .map((e) => e.representative)
             .toList(),
       );
+      if (_controller.hasMore &&
+          !_controller.isLoadingMore &&
+          _controller.loadMoreError == null &&
+          end >= entries.length - columns) {
+        _controller.loadMoreFiles();
+      }
     });
   }
 
@@ -109,11 +236,17 @@ class _GalleryScreenState extends State<GalleryScreen> {
           entry: entry,
           controller: _controller,
           thumbnails: _thumbnails,
+          isDemo: widget.cameraName == null,
+          onImport: widget.onImport == null ? null : _importFiles,
         ),
       ),
     );
     if (!mounted) return;
     _previewOpen = false;
+    if (_reloadAfterPreview) {
+      _reloadAfterPreview = false;
+      _refreshSession();
+    }
     _scheduleViewport();
     // A post-frame callback alone doesn't schedule a frame after pop settles.
     WidgetsBinding.instance.ensureVisualUpdate();
@@ -143,7 +276,18 @@ class _GalleryScreenState extends State<GalleryScreen> {
           appBar: AppBar(
             title: const Text('图库'),
             actions: [
-              GalleryOverflowMenu(controller: _controller, allowReload: true),
+              if (widget.onOpenQueue != null)
+                IconButton(
+                  tooltip: '导入队列',
+                  onPressed: widget.onOpenQueue,
+                  icon: const Icon(Icons.download_outlined),
+                ),
+              GalleryOverflowMenu(
+                controller: _controller,
+                allowReload: true,
+                isDemo: widget.cameraName == null,
+                onClearCache: _clearThumbnailCache,
+              ),
             ],
           ),
           body: SafeArea(
@@ -153,7 +297,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
                 return CustomScrollView(
                   controller: _scroll,
                   slivers: [
-                    SliverToBoxAdapter(child: _PreviewNotice()),
+                    SliverToBoxAdapter(
+                      child: _PreviewNotice(
+                        cameraName: widget.cameraName,
+                        connected: _connected,
+                      ),
+                    ),
                     SliverToBoxAdapter(
                       child: Padding(
                         padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
@@ -167,7 +316,7 @@ class _GalleryScreenState extends State<GalleryScreen> {
                               style: Theme.of(context).textTheme.titleLarge,
                             ),
                             Text(
-                              '${_renderedEntries.length} 项 · ${_controller.visibleFiles.length} 个文件',
+                              '${_renderedEntries.length} 项 · ${_controller.hasMore ? '已载入 ' : ''}${_controller.visibleFiles.length} 个文件',
                               style: Theme.of(context).textTheme.bodyMedium,
                             ),
                             Text(
@@ -201,8 +350,12 @@ class _GalleryScreenState extends State<GalleryScreen> {
                         hasScrollBody: false,
                         child: _GalleryMessage(
                           icon: Icons.error_outline,
-                          title: '示例文件载入失败',
-                          detail: '请重新载入图库。',
+                          title: widget.cameraName == null
+                              ? '示例文件载入失败'
+                              : '相机文件载入失败',
+                          detail: widget.cameraName == null
+                              ? '请重新载入图库。'
+                              : '请检查相机连接后，从更多菜单重新载入。${_controller.loadError ?? ''}',
                         ),
                       )
                     else if (_controller.visibleFiles.isEmpty)
@@ -216,6 +369,28 @@ class _GalleryScreenState extends State<GalleryScreen> {
                       )
                     else
                       _buildFileGrid(constraints.maxWidth),
+                    if (_controller.hasMore)
+                      SliverToBoxAdapter(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            children: [
+                              if (_controller.loadMoreError != null)
+                                Text('后续文件载入失败：${_controller.loadMoreError}'),
+                              OutlinedButton(
+                                onPressed: _controller.isLoadingMore
+                                    ? null
+                                    : _controller.loadMoreFiles,
+                                child: Text(
+                                  _controller.isLoadingMore
+                                      ? '正在载入文件信息…'
+                                      : '载入更多文件',
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     const SliverToBoxAdapter(child: SizedBox(height: 20)),
                   ],
                 );
@@ -224,8 +399,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
           ),
           bottomNavigationBar: _SelectionBar(
             selectedCount: _controller.selectedCount,
+            isDemo: widget.onImport == null,
             onClear: _controller.clearSelection,
-            onImport: _showImportNotice,
+            onImport: _importSelected,
           ),
         );
       },
@@ -258,7 +434,6 @@ class _GalleryScreenState extends State<GalleryScreen> {
           return CameraFileTile(
             entry: entry,
             selection: _controller.selectionFor(entry),
-            rating: _controller.ratingFor(entry),
             thumbnails: _thumbnails,
             onTap: () => _openPreview(entry),
             onToggleSelection: () => _controller.toggleEntrySelection(entry),
@@ -270,7 +445,9 @@ class _GalleryScreenState extends State<GalleryScreen> {
 }
 
 class _PreviewNotice extends StatelessWidget {
-  const _PreviewNotice();
+  const _PreviewNotice({this.cameraName, this.connected = false});
+  final String? cameraName;
+  final bool connected;
 
   @override
   Widget build(BuildContext context) {
@@ -280,11 +457,15 @@ class _PreviewNotice extends StatelessWidget {
         builder: (context, constraints) {
           final largeText = MediaQuery.textScalerOf(context).scale(16) >= 20;
           final title = Text(
-            '示例图库',
+            cameraName ?? '示例图库',
             style: Theme.of(context).textTheme.titleMedium,
           );
           final state = Text(
-            '未连接 · 不会传输',
+            cameraName == null
+                ? '未连接 · 不会传输'
+                : connected
+                ? '已连接 · 按需预览'
+                : '连接中断 · 缓存仍可查看',
             style: Theme.of(context).textTheme.bodySmall
                 ?.copyWith(color: AppTheme.mutedText),
           );
@@ -337,11 +518,13 @@ class _GalleryMessage extends StatelessWidget {
 class _SelectionBar extends StatelessWidget {
   const _SelectionBar({
     required this.selectedCount,
+    required this.isDemo,
     required this.onClear,
     required this.onImport,
   });
 
   final int selectedCount;
+  final bool isDemo;
   final VoidCallback onClear;
   final VoidCallback onImport;
 
@@ -361,7 +544,11 @@ class _SelectionBar extends StatelessWidget {
       child: const Text('清除'),
     );
     final importButton = Tooltip(
-      message: selectedCount == 0 ? '先选择文件' : '示例文件仅供预览；不会传输',
+      message: selectedCount == 0
+          ? '先选择文件'
+          : isDemo
+          ? '示例文件仅供预览；不会传输'
+          : '将所选原始文件加入导入队列',
       child: FilledButton.icon(
         onPressed: selectedCount == 0 ? null : onImport,
         icon: const Icon(Icons.file_download_outlined, size: 19),

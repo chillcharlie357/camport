@@ -1,5 +1,5 @@
-name: sony_camera
-description: "A fast, local photo transfer app for Sony cameras."
+name: camport
+description: "CamPort — fast local photo transfer for Sony cameras."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -7,14 +7,19 @@ environment:
   sdk: ^3.13.4
 
 dependencies:
+  crypto: ^3.0.8
   flutter:
     sdk: flutter
+  image: ^4.12.0
+  path_provider: ^2.1.6
   shared_preferences: ^2.5.6
+  xml: ^7.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
+  shared_preferences_platform_interface: ^2.4.0
 
 flutter:
   uses-material-design: true

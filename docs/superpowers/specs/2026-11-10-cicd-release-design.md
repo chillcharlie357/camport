@@ -24,7 +24,7 @@ Secrets：`ANDROID_KEYSTORE_BASE64`、`ANDROID_KEYSTORE_PASSWORD`、`ANDROID_KEY
 
 macOS 暂无 Developer ID/公证证书，产物标明 ad-hoc 签名；Windows 暂无 Authenticode 签名。它们是直接分发压缩包，不是商店上架包。Apple 签名准备好后再接入可安装 iOS 包与 macOS 公证。
 
-当前项目签名备份位于实施 worktree 的 `.tools/release-signing/`（不入 Git），其中 `sony-camera-release.p12` 与 `keystore-password.txt` 必须一并保留，移除 worktree 前先另行备份。公开证书 SHA-256 为 `a1353154ca70fa3e9ca0acfe7a5f0cb96ef55c31d758bbfd0d06cada178a8938`。已配置四项仓库 Secrets。首次从 release 构建后，可对 APK 的签名证书指纹进行核对。
+当前项目签名备份位于实施 worktree 的 `.tools/release-signing/`（不入 Git），其中 `camport-release.p12` 与 `keystore-password.txt` 必须一并保留，移除 worktree 前先另行备份。公开证书 SHA-256 为 `a1353154ca70fa3e9ca0acfe7a5f0cb96ef55c31d758bbfd0d06cada178a8938`。已配置四项仓库 Secrets。首次从 release 构建后，可对 APK 的签名证书指纹进行核对。
 
 默认 token 只读；仅发布 job 有 `contents: write`。PR job 不继承签名 secrets。外部 Actions 固定提交 SHA，Flutter 固定为当前工程的 3.47.5，依赖按 lockfile 安装。
 

@@ -26,6 +26,8 @@
 	<string>$(PRODUCT_COPYRIGHT)</string>
 	<key>NSMainNibFile</key>
 	<string>MainMenu</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>连接局域网或相机 Wi-Fi 中的 Sony 相机，发现设备并通过 PTP/IP 导入照片和视频。</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
 </dict>

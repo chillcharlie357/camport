@@ -2,6 +2,8 @@
 
 日期：2026-11-10。仅分析已下载的包，未安装或执行 APK，未连接手机或相机。本文记录后续适配器的研究入口，不能作为 ZV-E10 一代已兼容或已通过传输验收的证明。
 
+> 2026-11-11 补充：连接/下载操作码已与公开逆向成果交叉核对，见 [sony-ptpip-protocol.md](sony-ptpip-protocol.md)。本文件保留原始 APK 静态分析记录。
+
 ## 包身份
 
 版本和包名来自下载包的 `manifest.json`，下列 SHA-256 为本机重新计算的 base APK 哈希；哈希用于固定分析对象，不代表签名或来源真实性已经验证。
@@ -32,6 +34,7 @@ REA 的 JADX 配置已存在。本轮 `inspect_android_package` 在 `ownership_p
 | IEM-04 | `com/sony/playmemories/mobile/ptpip/mtp/ThumbnailGetter.java`，`getOperation` | 缩略图分支使用 `GetThumb`，参数包含对象句柄；从接收缓冲区取得数据 | PTP/IP 建链、对象枚举、操作码、会话及响应校验；缩略图尺寸/实际流量 |
 | IEM-05 | `com/sony/playmemories/mobile/cds/action/GetRootContainer.java`，`retrieveContainer`；DEX 字符串表 `classes.dex` 偏移 `0x682833` | 存在 XML container 解析，以及 `ContentDirectory:1` 的 `Browse` SOAP 模板 | 哪个设备发现结果启用此分支；DIDL 媒体资源中缩略图与原图如何区分 |
 | IEM-06 | `com/sony/playmemories/mobile/contentviewer/detail/controller/exif/information/RatingInformation.java`，`getRating`；`transfer/mtp/detail/exif/information/RatingInformation.java` | 前者读取 XMP 工具中的评分值；后者读取传输项目已有 EXIF 评分用于展示 | 尚未形成相机评分写入调用证据；展示评分不等于卡内写回 |
+| IEM-07 | `contentviewer/detail/controller/exif/RatingDialog.java`，`AnonymousClass1.onClick`；`common/content/XmpToolkit.java`，`setRating` / `writeXmpMeta` / 构造函数（同一已固定哈希的 IEM 包） | 用户确认评分后调用 `mXmpToolkit.setRating`；工具通过 Android 本地文件或 MediaStore URI 打开输入流、用 `XmpUtil.insertXMPSection` 构造 JPEG 段，再向本机输出流写回；无 MediaStore URI 的分支只尝试 JPG/JPEG。权限异常走系统授权回调。 | 这是**本机 JPEG** 的静态写入链，不是相机远程命令；尚未证实它如何处理本机 RAW/PNG，亦未证明安全原子提交、评分读回或 ZV-E10 卡内写回。不能照搬其直接覆盖文件的做法作为本项目的完整性保证。 |
 
 由此可确认 IEM 包内并存多条媒体访问实现，而非所有相机共用一个 HTTP 路径。当前证据不足以选择 ZV-E10 一代的实际传输分支，也不足以实现原图 URL、缩略图 URL或评分写回命令。
 

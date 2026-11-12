@@ -1,8 +1,35 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
+    <!-- Android 16 RESTRICT_LOCAL_NETWORK opt-in uses this runtime permission.
+         It does not authorize scanning, joining a camera AP, or deriving location. -->
+    <uses-permission
+        android:name="android.permission.NEARBY_WIFI_DEVICES"
+        android:maxSdkVersion="36"
+        android:usesPermissionFlags="neverForLocation" />
+    <!-- Flutter 3.47.5 currently targets 36. Per Android's local-network guidance,
+         do not declare ACCESS_LOCAL_NETWORK while targetSdk is 36 or lower.
+         When upgrading targetSdk to 37+, add the following declaration; the
+         process bridge already gates and requests it before prepareNetwork:
+         <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+    -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <application
-        android:label="sony_camera"
-        android:name="${applicationName}"
+        android:label="CamPort"
+        android:name=".CameraTransferApplication"
         android:icon="@mipmap/ic_launcher">
+        <service
+            android:name=".CameraTransferService"
+            android:exported="false"
+            android:stopWithTask="false"
+            android:foregroundServiceType="connectedDevice" />
         <activity
             android:name=".MainActivity"
             android:exported="true"

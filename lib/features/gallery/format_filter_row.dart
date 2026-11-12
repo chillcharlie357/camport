@@ -6,10 +6,14 @@ class GalleryOverflowMenu extends StatelessWidget {
   const GalleryOverflowMenu({
     required this.controller,
     this.allowReload = false,
+    this.isDemo = true,
+    this.onClearCache,
     super.key,
   });
   final GalleryController controller;
   final bool allowReload;
+  final bool isDemo;
+  final Future<void> Function()? onClearCache;
 
   @override
   Widget build(BuildContext context) {
@@ -17,9 +21,25 @@ class GalleryOverflowMenu extends StatelessWidget {
       tooltip: '更多',
       icon: const Icon(Icons.more_horiz),
       constraints: const BoxConstraints(minWidth: 180),
-      onSelected: (action) {
+      onSelected: (action) async {
         if (action == 'reload') {
           controller.loadFiles();
+          return;
+        }
+        if (action == 'cache') {
+          try {
+            await onClearCache?.call();
+            if (context.mounted) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(const SnackBar(content: Text('缩略图缓存已清理，导入原片保留')));
+            }
+          } catch (_) {
+            if (context.mounted) {
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(const SnackBar(content: Text('缓存清理失败，请稍后重试')));
+            }
+          }
           return;
         }
         showModalBottomSheet<void>(
@@ -40,7 +60,13 @@ class GalleryOverflowMenu extends StatelessWidget {
             value: 'reload',
             height: 48,
             enabled: !controller.isLoading,
-            child: const Text('重新载入示例文件'),
+            child: Text(isDemo ? '重新载入示例文件' : '重新载入相机文件'),
+          ),
+        if (onClearCache != null)
+          const PopupMenuItem(
+            value: 'cache',
+            height: 48,
+            child: Text('清理缩略图缓存'),
           ),
       ],
     );
@@ -106,7 +132,7 @@ class GalleryDisplaySheet extends StatelessWidget {
                 onChanged: controller.setMergeRawJpeg,
               ),
               const SizedBox(height: 12),
-              const Text('格式先筛选原文件，再合并显示。切换显示方式会保留已选文件和照片评分。'),
+              const Text('格式先筛选原文件，再合并显示。切换显示方式会保留已选文件。'),
             ],
           ),
         ),

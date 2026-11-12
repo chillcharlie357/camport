@@ -1,12 +1,12 @@
 import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/data/adapters/fixture_camera_adapter.dart';
-import 'package:sony_camera/data/local/gallery_preferences.dart';
-import 'package:sony_camera/domain/models/camera_file.dart';
-import 'package:sony_camera/domain/models/camera_page.dart';
-import 'package:sony_camera/domain/ports/camera_adapter.dart';
-import 'package:sony_camera/features/gallery/gallery_controller.dart';
+import 'package:camport/data/adapters/fixture_camera_adapter.dart';
+import 'package:camport/data/local/gallery_preferences.dart';
+import 'package:camport/domain/models/camera_file.dart';
+import 'package:camport/domain/models/camera_page.dart';
+import 'package:camport/domain/ports/camera_adapter.dart';
+import 'package:camport/features/gallery/gallery_controller.dart';
 
 class MemoryStore implements GalleryPreferenceStore {
   String? value;
@@ -194,59 +194,20 @@ void main() {
   );
 
   test(
-    'split RAW/JPEG/PNG share rating through filter and merge changes',
-    () async {
-      final controller = await gallery(
-        files: [
-          file('raw', 'a.ARW'),
-          file('jpg', 'A.jpg'),
-          file('png', 'a.PNG'),
-          file('unrelated', 'B.jpg'),
-          file('video', 'a.mp4'),
-        ],
-      );
-      controller.setMergeRawJpeg(false);
-      controller.setRating(controller.visibleEntries.first, 4);
-      expect(controller.visibleEntries.take(3).map(controller.ratingFor), [
-        4,
-        4,
-        4,
-      ]);
-      expect(controller.ratingFor(controller.visibleEntries[3]), 0);
-      controller.selectFormat(CameraFileFormat.png);
-      expect(controller.visibleEntries.single.members.single.id, 'png');
-      expect(controller.ratingFor(controller.visibleEntries.single), 4);
-      expect(
-        controller.membersFor(controller.visibleEntries.single),
-        hasLength(3),
-      );
-      controller.setRating(controller.visibleEntries.single, 0);
-      controller.selectFormat(null);
-      controller.setMergeRawJpeg(true);
-      expect(controller.ratingFor(controller.visibleEntries.first), 0);
-      final video = controller.visibleEntries.last;
-      controller.setRating(video, 5);
-      expect(controller.ratingFor(video), 0);
-    },
-  );
-
-  test(
-    'ratings and merge preference survive a new repository and gallery',
+    'merge preference survives reopening; filtering retains source members',
     () async {
       final store = MemoryStore();
       final prefs = GalleryPreferences(store: store);
       addTearDown(prefs.dispose);
       final first = await gallery(preferences: prefs);
-      first.setRating(first.visibleEntries.first, 5);
-      first.setMergeRawJpeg(false);
+      first.setMergeRawJpeg(true);
       await prefs.flush();
       final restored = GalleryPreferences(store: store);
       addTearDown(restored.dispose);
       final next = await gallery(preferences: restored);
-      expect(next.mergeRawJpeg, isFalse);
-      expect(next.ratingFor(next.visibleEntries.first), 5);
+      expect(next.mergeRawJpeg, isTrue);
       next.selectFormat(CameraFileFormat.jpeg);
-      expect(next.ratingFor(next.visibleEntries.first), 5);
+      expect(next.visibleEntries, isNotEmpty);
     },
   );
 
@@ -273,25 +234,23 @@ void main() {
   });
 
   test(
-    'writes serialize and reopening the gallery shares pending latest edits',
+    'writes serialize latest merge setting across overlapping galleries',
     () async {
       final store = MemoryStore()..writeGate = Completer<void>();
       final prefs = GalleryPreferences(store: store);
       addTearDown(prefs.dispose);
       final first = await gallery(preferences: prefs);
-      first.setRating(first.visibleEntries.first, 1);
+      first.setMergeRawJpeg(true);
       await Future<void>.delayed(Duration.zero);
       final next = await gallery(preferences: prefs);
-      next.setRating(next.visibleEntries.first, 5);
       next.setMergeRawJpeg(false);
-      expect(first.ratingFor(first.visibleEntries.first), 5);
+      expect(first.mergeRawJpeg, isFalse);
       store.writeGate!.complete();
       await prefs.flush();
       expect(store.maxActiveWrites, 1);
       final restored = GalleryPreferences(store: store);
       addTearDown(restored.dispose);
       await restored.ready;
-      expect(restored.rating(next.visibleEntries.first.identity), 5);
       expect(restored.mergeRawJpeg, isFalse);
     },
   );

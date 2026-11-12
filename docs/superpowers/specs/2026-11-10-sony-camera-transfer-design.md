@@ -1,4 +1,4 @@
-# Sony Camera Photo Transfer — Product and Technical Design
+# CamPort — Sony Camera Photo Transfer Product and Technical Design
 
 **Status:** Scope approved; implementation in progress  
 **Date:** 2026-11-10

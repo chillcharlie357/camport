@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/app/app_theme.dart';
-import 'package:sony_camera/data/adapters/fixture_camera_adapter.dart';
-import 'package:sony_camera/data/local/gallery_preferences.dart';
-import 'package:sony_camera/features/gallery/gallery_screen.dart';
-import 'package:sony_camera/domain/ports/camera_adapter.dart';
+import 'package:camport/app/app_theme.dart';
+import 'package:camport/data/adapters/fixture_camera_adapter.dart';
+import 'package:camport/data/local/gallery_preferences.dart';
+import 'package:camport/features/gallery/gallery_screen.dart';
+import 'package:camport/domain/ports/camera_adapter.dart';
 
 import 'gallery_test.dart' show MemoryStore, ListingAdapter;
 
@@ -71,24 +71,18 @@ void main() {
   );
 
   testWidgets(
-    'tile tap previews without selection; rating and member inspection work',
+    'tile tap previews members without selection or rating controls',
     (tester) async {
-      final prefs = await openGallery(tester);
+      await openGallery(tester);
       await tester.tap(find.byKey(const ValueKey('preview-raw-1')));
       await tester.pumpAndSettle();
-      expect(find.text('照片评分'), findsOneWidget);
+      expect(find.text('照片评分'), findsNothing);
       expect(find.text('DSC_0001.ARW'), findsWidgets);
       expect(find.text('DSC_0001.JPG'), findsWidgets);
-      await tester.ensureVisible(find.byTooltip('评分 4 星'));
-      await tester.tap(find.byTooltip('评分 4 星'));
-      await tester.pumpAndSettle();
-      expect(find.text('4 / 5 星'), findsOneWidget);
-      expect(find.textContaining('本机原文件和相机原文件尚未写入'), findsOneWidget);
+      expect(find.byTooltip('评分 4 星'), findsNothing);
       await tester.pageBack();
       await tester.pumpAndSettle();
       expect(find.text('已选 0 个文件'), findsOneWidget);
-      expect(find.text('★ 4'), findsOneWidget);
-      await prefs.flush();
       await tester.longPress(find.byKey(const ValueKey('preview-raw-1')));
       await tester.pumpAndSettle();
       expect(find.text('已选 2 个文件'), findsOneWidget);

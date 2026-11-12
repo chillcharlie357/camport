@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
 
 import '../../domain/models/camera_file.dart';
 import '../../domain/ports/camera_adapter.dart';
+import '../../domain/ports/versioned_thumbnail_source.dart';
+import '../../data/local/thumbnail_disk_cache.dart';
 
 enum ThumbnailStatus { idle, queued, loading, ready, unavailable, error }
 
@@ -46,13 +49,15 @@ final class _Request {
 /// and unavailable results are remembered until [retry], preventing scroll-driven
 /// retry loops. These small terminal records live until disposal.
 ///
-/// TODO: Add a separately budgeted disk cache; currently nothing is persisted.
+/// Disk caching is opt-in: the adapter must supply a stable camera/storage/file
+/// revision namespace. Disk failures degrade to memory and camera thumbnails.
 class ThumbnailRepository extends ChangeNotifier {
   ThumbnailRepository({
     required this.adapter,
     required this.namespace,
     this.maxConcurrent = 2,
     this.maxMemoryBytes = 32 * 1024 * 1024,
+    this.diskCache,
   }) {
     if (maxConcurrent != 1 && maxConcurrent != 2) {
       throw ArgumentError.value(
@@ -82,6 +87,8 @@ class ThumbnailRepository extends ChangeNotifier {
   final String namespace;
   final int maxConcurrent;
   final int maxMemoryBytes;
+  final ThumbnailDiskCache? diskCache;
+  final _bypassDisk = <_ThumbnailKey>{};
 
   final _cache = <_ThumbnailKey, Uint8List>{};
   final _terminal = <_ThumbnailKey, ThumbnailState>{};
@@ -160,9 +167,30 @@ class ThumbnailRepository extends ChangeNotifier {
     final key = _key(file);
     final removed = _cache.remove(key);
     if (removed != null) _memoryBytes -= removed.lengthInBytes;
+    _bypassDisk.add(key);
+    unawaited(_removeDisk(key));
     _terminal.remove(key);
     _enqueue(file, preview: true);
     _pump();
+  }
+
+  String _diskKey(_ThumbnailKey key) =>
+      jsonEncode([key.$1, key.$2, key.$3, key.$4, key.$5?.toIso8601String()]);
+
+  Future<void> _removeDisk(_ThumbnailKey key) async {
+    try {
+      await diskCache?.remove(_diskKey(key));
+    } catch (_) {
+      // A cache is disposable; it must never block a fresh camera request.
+    }
+  }
+
+  Future<void> clearCache() async {
+    _cache.clear();
+    _memoryBytes = 0;
+    _terminal.clear();
+    await diskCache?.clear();
+    _changed();
   }
 
   void setImportActive(bool active) {
@@ -232,7 +260,30 @@ class ThumbnailRepository extends ChangeNotifier {
   Future<void> _load(_Request request) async {
     Uint8List? bytes;
     try {
-      final response = await adapter.loadThumbnail(request.file.id);
+      Uint8List? cached;
+      final bypass = _bypassDisk.remove(request.key);
+      if (diskCache != null && !bypass) {
+        try {
+          cached = await diskCache?.read(_diskKey(request.key));
+        } catch (_) {
+          // Missing/corrupt/unwritable caches do not make the gallery unusable.
+        }
+      }
+      if (_disposed) return;
+      if (cached != null &&
+          cached.isNotEmpty &&
+          cached.lengthInBytes <= maxEntryBytes &&
+          cached.lengthInBytes <= maxMemoryBytes) {
+        bytes = cached.asUnmodifiableView();
+        _store(request.key, bytes);
+        return;
+      }
+      final source = adapter;
+      final response = source is VersionedThumbnailSource
+          ? await (source as VersionedThumbnailSource).loadVersionedThumbnail(
+              request.file,
+            )
+          : await source.loadThumbnail(request.file.id);
       if (_disposed) return;
       if (response == null || response.isEmpty) {
         _terminal[request.key] = _unavailable;
@@ -249,6 +300,7 @@ class ThumbnailRepository extends ChangeNotifier {
         // immutable copy also prevents callers from corrupting cached bytes.
         bytes = Uint8List.fromList(response).asUnmodifiableView();
         _store(request.key, bytes);
+        if (diskCache != null) unawaited(_writeDisk(request.key, bytes));
       }
     } catch (error) {
       if (!_disposed) {
@@ -264,6 +316,14 @@ class ThumbnailRepository extends ChangeNotifier {
         if (request.preview || _observed(request.key)) _changed();
         _pump();
       }
+    }
+  }
+
+  Future<void> _writeDisk(_ThumbnailKey key, Uint8List bytes) async {
+    try {
+      await diskCache?.write(_diskKey(key), bytes);
+    } catch (_) {
+      // This remains a ready memory thumbnail even if the disk is full.
     }
   }
 
@@ -308,6 +368,7 @@ class ThumbnailRepository extends ChangeNotifier {
     _inFlight.clear();
     _cache.clear();
     _terminal.clear();
+    _bypassDisk.clear();
     _visible.clear();
     _prefetch.clear();
     _memoryBytes = 0;

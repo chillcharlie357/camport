@@ -9,7 +9,6 @@ class CameraFileTile extends StatelessWidget {
   const CameraFileTile({
     required this.entry,
     required this.selection,
-    required this.rating,
     required this.onTap,
     required this.onToggleSelection,
     required this.thumbnails,
@@ -18,7 +17,6 @@ class CameraFileTile extends StatelessWidget {
 
   final GalleryEntry entry;
   final bool? selection;
-  final int rating;
   final VoidCallback onTap;
   final VoidCallback onToggleSelection;
   final ThumbnailRepository thumbnails;
@@ -44,8 +42,7 @@ class CameraFileTile extends StatelessWidget {
       ),
       clipBehavior: Clip.antiAlias,
       child: Semantics(
-        label:
-            '预览 ${file.name}，${entry.formatLabel}${entry.isPhotoEntry ? '，评分 $rating 星' : ''}',
+        label: '预览 ${file.name}，${entry.formatLabel}',
         child: InkWell(
           key: ValueKey('preview-${entry.members.first.id}'),
           onTap: onTap,
@@ -116,15 +113,6 @@ class CameraFileTile extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: theme.textTheme.bodySmall,
                     ),
-                    if (entry.isPhotoEntry) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        rating == 0 ? '未评分' : '★ $rating',
-                        style: theme.textTheme.bodySmall?.copyWith(
-                          color: AppTheme.accent,
-                        ),
-                      ),
-                    ],
                     if (selection == null)
                       Text(
                         '部分已选',

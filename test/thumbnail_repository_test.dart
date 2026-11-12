@@ -2,10 +2,10 @@ import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sony_camera/domain/models/camera_file.dart';
-import 'package:sony_camera/domain/models/transfer_progress.dart';
-import 'package:sony_camera/domain/ports/camera_adapter.dart';
-import 'package:sony_camera/features/gallery/thumbnail_repository.dart';
+import 'package:camport/domain/models/camera_file.dart';
+import 'package:camport/domain/models/transfer_progress.dart';
+import 'package:camport/domain/ports/camera_adapter.dart';
+import 'package:camport/features/gallery/thumbnail_repository.dart';
 
 class ControlledAdapter implements CameraAdapter {
   final calls = <String>[];

@@ -44,7 +44,7 @@ jobs:
           ref: ${{ inputs.ref }}
           persist-credentials: false
       - name: Set temporary signing path
-        run: printf 'ANDROID_KEYSTORE_PATH=%s/sony-camera-release.p12\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
+        run: printf 'ANDROID_KEYSTORE_PATH=%s/camport-release.p12\n' "$RUNNER_TEMP" >> "$GITHUB_ENV"
       - uses: actions/setup-java@b6effb05e454b25005698d916606bdc6ffcbf961 # v5
         with:
           distribution: temurin
@@ -94,7 +94,7 @@ jobs:
           signers=("$ANDROID_HOME"/build-tools/*/apksigner)
           "${signers[-1]}" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
           mkdir -p dist
-          cp build/app/outputs/flutter-apk/app-release.apk "dist/sony-camera-$BUILD_NAME-$suffix"
+          cp build/app/outputs/flutter-apk/app-release.apk "dist/camport-$BUILD_NAME-$suffix"
       - name: Remove temporary key
         if: always()
         run: |
@@ -121,12 +121,12 @@ jobs:
       - name: Build macOS and package app bundle
         run: |
           flutter build macos --release --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
-          app=build/macos/Build/Products/Release/sony_camera.app
-          lipo -archs "$app/Contents/MacOS/sony_camera"
+          app=build/macos/Build/Products/Release/CamPort.app
+          lipo -archs "$app/Contents/MacOS/CamPort"
           codesign --force --sign - --preserve-metadata=entitlements "$app"
           codesign --verify --deep --strict "$app"
           mkdir -p dist
-          ditto -c -k --sequesterRsrc --keepParent "$app" "dist/sony-camera-$BUILD_NAME-macos.zip"
+          ditto -c -k --sequesterRsrc --keepParent "$app" "dist/camport-$BUILD_NAME-macos.zip"
       - name: Compile iOS without distribution signing
         run: flutter build ios --release --no-codesign --build-name "$BUILD_NAME" --build-number "$BUILD_NUMBER"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
@@ -159,7 +159,7 @@ jobs:
           if (-not $crt) { throw 'Redistributable Visual C++ runtime not found' }
           Copy-Item "$($crt.FullName)/*.dll" $bundle
           New-Item -ItemType Directory -Force dist | Out-Null
-          Compress-Archive -Path "$bundle/*" -DestinationPath "dist/sony-camera-$env:BUILD_NAME-windows-x64.zip"
+          Compress-Archive -Path "$bundle/*" -DestinationPath "dist/camport-$env:BUILD_NAME-windows-x64.zip"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: package-windows
